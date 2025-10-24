@@ -7,6 +7,7 @@ requires-python = ">=3.13"
 dependencies = [
     "lint>=1.2.1",
     "pre-commit>=4.3.0",
+    "pytest>=8.4.2",
     "ruff>=0.14.2",
 ]
 
