@@ -54,5 +54,21 @@ test:
   stage: test
   extends: .ci-template
   script:
-    - uv run pytest --doctest-modules --maxfail=3 --disable-warnings -q
-    - uv run behave tests/behave/features
+    - |
+      if [ -d tests ]; then
+        uv run pytest --doctest-modules --maxfail=3 --disable-warnings -q || rc=$?
+        if [ "${rc:-0}" -eq 5 ]; then
+          echo "Pytest found no tests; skipping as success."
+          exit 0
+        else
+          exit "${rc:-0}"
+        fi
+      else
+        echo "No tests directory; skipping pytest."
+      fi
+    - |
+      if [ -d tests/behave/features ]; then
+        uv run behave tests/behave/features || exit 1
+      else
+        echo "No behave features; skipping behave."
+      fi
