@@ -13,7 +13,7 @@ dependencies = [
 # uv run shortcuts
 [project.scripts]
 # run the app
-main = "src.main:main"
+main = "python:src/main.py"
 # code quality
 precommit = "src.utils.aliases:precommit"
 lint = "src.utils.aliases:precommit"
