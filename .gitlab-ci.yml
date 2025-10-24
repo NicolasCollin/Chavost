@@ -35,7 +35,7 @@ typecheck:
   stage: typecheck
   extends: .ci-template
   script:
-    - uv run mypy
+    - uv run mypy src
   allow_failure: true
 
 
