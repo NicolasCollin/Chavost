@@ -4,57 +4,53 @@ stages:
   - audit
   - test
 
-# Base template for Python installation (no uv)
-.ci-template:
-  image: python:3.13-slim
-  before_script:
-    - python -m pip install --upgrade pip
-    - |
-      if [ -f requirements.txt ]; then
-        pip install -r requirements.txt
-      elif [ -f pyproject.toml ]; then
-        # Install project and dev tools directly when no requirements.txt
-        pip install . pre-commit mypy pytest behave pip-audit
-      fi
 
-# Lint step (pre-commit)
+# template for uv installation
+.ci-template:
+  # image: python:3.13-slim
+  cache:
+    key: "uv-cache"
+    paths:
+      - .uv-cache
+  variables:
+    UV_CACHE_DIR: .uv-cache
+  before_script:
+  - python -m pip install --upgrade pip
+  - python -m pip install uv
+  - uv sync --frozen --group dev
+
+
+# pre-commit hooks
 lint:
   stage: lint
   extends: .ci-template
   script:
-    - pre-commit run --all-files --show-diff-on-failure
+    - uv run pre-commit run --all-files --show-diff-on-failure
   allow_failure: true
 
-# Type checking with mypy
+
+# mypy static type checker
 typecheck:
   stage: typecheck
   extends: .ci-template
   script:
-    - mypy src
+    - uv run mypy
   allow_failure: true
 
-# Dependency security audit
+
+# look for vulnerable dependencies
 audit:
   stage: audit
   extends: .ci-template
   script:
-    - pip-audit || true
+    - uv run pip-audit .
   allow_failure: true
 
-# Unit tests and behave tests
+
+# unit tests, doctests, and behave tests
 test:
   stage: test
   extends: .ci-template
   script:
-    - |
-      if [ -d tests ]; then
-        pytest --doctest-modules --maxfail=3 --disable-warnings -q || true
-      else
-        echo "No pytest tests directory; skipping."
-      fi
-    - |
-      if [ -d tests/behave/features ]; then
-        behave tests/behave/features || true
-      else
-        echo "No behave features; skipping."
-      fi
+    - uv run pytest --doctest-modules --maxfail=3 --disable-warnings -q
+    - uv run behave tests/behave/features

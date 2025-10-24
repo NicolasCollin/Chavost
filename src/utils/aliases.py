@@ -16,7 +16,7 @@ def precommit() -> None:
 
 def typecheck(extra_args: Optional[str] = None) -> None:
     """Run static type checking with mypy."""
-    cmd: str = "uv run mypy fpi"
+    cmd: str = "uv run mypy"
     if extra_args:
         cmd += f" {extra_args}"
     run_command(cmd)
