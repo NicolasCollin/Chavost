@@ -75,21 +75,13 @@ uv sync
 ### 6.3 Lancer l’application locale
 
 ```bash
-uv run ./src/main.py
+uv run main
 ```
-
-> Astuce : si vous utilisez souvent cette commande, créez un alias shell, par exemple :  
-> `alias chavost='uv run ./src/main.py'`
 
 ### 6.4 Données
 - Placez vos fichiers Excel sources dans `data/raw/`.  
 - Les sorties structurées seront générées dans `data/processed/` (selon le pipeline en place).  
 - Les fichiers `resultat.csv` et `pred_test.csv` servent d’exemple pour la partie démonstration/visualisation.
-
-### 6.5 Dépannage courant
-- **uv ne trouve pas Python 3.12** : installez la version correspondante puis rejouez `uv venv && uv sync`.  
-- **Erreur d’import** : vérifiez que vous exécutez depuis la racine du dépôt et utilisez `uv run ./src/main.py`.  
-- **Données volumineuses** : ne versionnez pas `data/raw/` dans Git ; utilisez `.gitignore`.
 
 ---
 
@@ -127,16 +119,3 @@ Encadrement : **Emmanuelle GAUTHERAT** (Université de Reims Champagne‑Ardenne
 
 Projet académique dans le cadre du Master, destiné à un **usage interne** à la coopérative et à l’équipe pédagogique.  
 **Statut** : en développement, jalons BI et application à livrer selon la roadmap.
-
----
-
-## 11) Questions fréquentes
-
-**Puis‑je lancer directement un dashboard ?**  
-Aujourd’hui, l’entrée principale est `src/main.py`. Le dashboard Streamlit/BI sera livré au jalon suivant.
-
-**Comment rejouer le pipeline de nettoyage ?**  
-Placez les sources dans `data/raw/`, exécutez l’application (`uv run ./src/main.py`) et vérifiez `data/processed/`.
-
-**Puis‑je utiliser conda/venv à la place d’uv ?**  
-Oui, mais la configuration du projet est optimisée pour `uv`. Si vous changez d’outil, adaptez les commandes d’installation.
