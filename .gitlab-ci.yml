@@ -1,0 +1,74 @@
+stages:
+  - lint
+  - typecheck
+  - audit
+  - test
+
+
+# template for uv installation
+.ci-template:
+  # image: python:3.13-slim
+  cache:
+    key: "uv-cache"
+    paths:
+      - .uv-cache
+  variables:
+    UV_CACHE_DIR: .uv-cache
+  before_script:
+  - python -m pip install --upgrade pip
+  - python -m pip install uv
+  - uv --version
+  - uv sync --frozen || uv sync
+
+
+# pre-commit hooks
+lint:
+  stage: lint
+  extends: .ci-template
+  script:
+    - uv run pre-commit run --all-files --show-diff-on-failure
+  allow_failure: true
+
+
+# mypy static type checker
+typecheck:
+  stage: typecheck
+  extends: .ci-template
+  script:
+    - uv run mypy src
+  allow_failure: true
+
+
+# look for vulnerable dependencies
+audit:
+  stage: audit
+  extends: .ci-template
+  script:
+    - uvx pip-audit --version
+    - uvx pip-audit .
+  allow_failure: true
+
+
+# unit tests, doctests, and behave tests
+test:
+  stage: test
+  extends: .ci-template
+  script:
+    - |
+      if [ -d tests ]; then
+        uv run pytest --doctest-modules --maxfail=3 --disable-warnings -q || rc=$?
+        if [ "${rc:-0}" -eq 5 ]; then
+          echo "Pytest found no tests; skipping as success."
+          exit 0
+        else
+          exit "${rc:-0}"
+        fi
+      else
+        echo "No tests directory; skipping pytest."
+      fi
+    - |
+      if [ -d tests/behave/features ]; then
+        uv run behave tests/behave/features || exit 1
+      else
+        echo "No behave features; skipping behave."
+      fi

@@ -1,0 +1,29 @@
+[project]
+name = "chavost"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.13"
+dependencies = [
+    "lint>=1.2.1",
+    "pre-commit>=4.3.0",
+    "pytest>=8.4.2",
+    "ruff>=0.14.2",
+]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src"]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+# uv run shortcuts
+[project.scripts]
+# run the app
+main = "src.main:main"
+# code quality
+precommit = "src.utils.aliases:precommit"
+lint = "src.utils.aliases:precommit"
+typecheck = "src.utils.aliases:typecheck"
+audit = "src.utils.aliases:audit"
