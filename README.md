@@ -5,6 +5,8 @@
 **Chavost** est une marque de champagne née au sein de la coopérative de **Chavot-Courcourt**. Une spécificité forte de la maison est la cuvée **sans sulfites ajoutés** (créée en 2019, commercialisée après 15 mois d’élevage). Cette approche implique un suivi œnologique plus fin (prévention de l’oxydation par gaz neutres, cuves inox hermétiques, contrôles rapprochés), et participe à un profil aromatique plus « pur ».  
 Dans le même temps, la marque connaît une **croissance rapide** : des dizaines de milliers de bouteilles vendues la première année et **près de 100 000 de plus en 2024**. Cette montée en charge multiplie les **pays**, **importateurs**, **cuvées**, **formats** et **volumes stockés**, et rend critique la **structuration et l’exploitation** de la donnée commerciale.
 
+---
+
 ## 2) Problématique
 
 Les systèmes actuels ne permettent d’exploiter qu’une faible part de l’information disponible. Les questions métier sont nombreuses :  
@@ -13,11 +15,15 @@ Les systèmes actuels ne permettent d’exploiter qu’une faible part de l’in
 - Quels **prix moyens** et quelles **différences géographiques** observer ?  
 - Comment mieux **piloter** la croissance avec des **indicateurs** clairs et un **outillage** accessible ?
 
+---
+
 ## 3) Objectifs de la mission
 
 1. **Créer la collaboration** et cadrer les besoins (entretiens, périmètre, planning).  
 2. **Data Engineering** : transformer des **Excel bruts** (cellules fusionnées, totaux, mises en forme) en **base exploitable** (une ligne = une transaction).  
 3. **Analytics & BI** : produire un **rapport BI** (Power BI) et une **interface** (Streamlit) pour explorer les ventes par pays/importateur/cuvée/format, suivre les tendances, et appuyer la décision.
+
+---
 
 ## 4) Ce que fait le projet aujourd’hui
 
@@ -33,13 +39,13 @@ Les systèmes actuels ne permettent d’exploiter qu’une faible part de l’in
 
 ```
 chavost/
-├── .gitlab-ci.yml        # Pipeline GitLab CI/CD
 ├── data/
 │   ├── raw/              # Données brutes Excel
 │   └── processed/        # Données nettoyées et prêtes à l’analyse
 ├── src/
 │   ├── main.py           # Point d’entrée principal
 │   └── utils/            # Fonctions utilitaires
+├── .gitlab-ci.yml        # Pipeline GitLab CI/CD
 ├── pyproject.toml        # Fichier de configuration uv
 ├── README.md             # Documentation principale
 └── .gitignore            # Fichiers et dossiers exclus du suivi Git
@@ -99,9 +105,9 @@ uv run main
 
 ## 9) Équipe & encadrement
 
-- **Nikita POMOZOV** — Data engineering & cadrage  
-- **Nicolas COLLIN** — Développement & automatisation  
-- **Matthis ARVOIS** — Analyses & visualisations  
+- **Nikita POMOZOV** — Analyses & visualisations 
+- **Nicolas COLLIN** — Développement & automatisation 
+- **Matthis ARVOIS** — Data engineering & cadrage
 
 Encadrement : **Emmanuelle GAUTHERAT** (Université de Reims Champagne-Ardenne).
 
