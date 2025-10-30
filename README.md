@@ -44,7 +44,7 @@ chavost/
 │   └── processed/        # Données nettoyées et prêtes à l’analyse
 ├── src/
 │   ├── main.py           # Point d’entrée principal
-│   └── utils/            # Fonctions utilitaires
+│   └── utils/            # Fonctions utilitaires et script R (Transformation des données)
 ├── .gitlab-ci.yml        # Pipeline GitLab CI/CD
 ├── pyproject.toml        # Fichier de configuration uv
 ├── README.md             # Documentation principale

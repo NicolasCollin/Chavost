@@ -6,9 +6,13 @@ readme = "README.md"
 requires-python = ">=3.13"
 dependencies = [
     "lint>=1.2.1",
+    "numpy>=2.3.4",
+    "plotly>=6.3.1",
     "pre-commit>=4.3.0",
     "pytest>=8.4.2",
     "ruff>=0.14.2",
+    "scikit-learn>=1.7.2",
+    "streamlit>=1.51.0",
 ]
 
 [tool.hatch.build.targets.wheel]
