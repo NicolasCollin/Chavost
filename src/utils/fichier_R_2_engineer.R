@@ -4,7 +4,7 @@ library(tibble)
 library(dplyr)
 library(stringr)
 library(stringi)      # pour enlever les accents
-library(fuzzyjoin) 
+library(fuzzyjoin)
 
 # --- 1) Import ---
 data <- read_excel("calsseur_ivu.xlsx")  # adapte le nom si besoin
@@ -29,12 +29,12 @@ n_max <- nrow(data)
 
 # --- 3) Boucle par bloc client ---
 for (lines in 4:n_max) {
-  
+
   v_cli <- data[[lines, col_client]]
   if (!is.na(v_cli)) {
     client_name <- as.character(v_cli)
     if (!startsWith(client_name, "Total")) {
-      
+
       # Détection fin du bloc client
       number_of_lines <- 1
       while ((lines + number_of_lines) <= n_max &&
@@ -43,11 +43,11 @@ for (lines in 4:n_max) {
         number_of_lines <- number_of_lines + 1
       }
       end_line <- min(lines + number_of_lines - 1, n_max)
-      
+
       # ---- 3a) Collecte des lignes "type/famille" dans le bloc ----
       family_product <- character(0)  # libellés type
       list_val <- integer(0)          # indices de lignes où ces types apparaissent
-      
+
       for (r in lines:end_line) {
         val_type <- as.character(data[[r, col_type]])
         if (!is.na(val_type) && nzchar(trimws(val_type)) && !startsWith(val_type, "Total")) {
@@ -56,24 +56,24 @@ for (lines in 4:n_max) {
         }
       }
       if (length(family_product) == 0) next
-      
+
       names(family_product) <- list_val
       fam_idx <- as.integer(names(family_product))
-      
+
       # ---- 3b) Pour chaque type : produits de la ligne du type jusqu'à la suivante ----
       for (k in seq_along(family_product)) {
-        
+
         fam_label <- family_product[k]
         type_row  <- fam_idx[k]
         start_r   <- type_row                                # ⚠️ inclu la ligne du type
         stop_r    <- if (k < length(fam_idx)) fam_idx[k+1]-1 else end_line
         if (start_r > stop_r) next
-        
+
         for (r in start_r:stop_r) {
-          
+
           prod_name <- as.character(data[[r, col_prod]])
           if (is.na(prod_name) || !nzchar(trimws(prod_name)) || startsWith(prod_name, "Total")) next
-          
+
           # ---------- Écriture 2024 ----------
           qte24  <- suppressWarnings(as.numeric(data[[r, col_qte_2024]]))
           prix24 <- suppressWarnings(as.numeric(data[[r, col_prix_2024]]))
@@ -86,7 +86,7 @@ for (lines in 4:n_max) {
             new_data$prix[idx_out]         <- ifelse(is.na(prix24), 0, prix24)
             idx_out <- idx_out + 1
           }
-          
+
           # ---------- Écriture 2025 ----------
           qte25  <- suppressWarnings(as.numeric(data[[r, col_qte_2025]]))
           prix25 <- suppressWarnings(as.numeric(data[[r, col_prix_2025]]))
@@ -130,14 +130,14 @@ write.csv(new_data, "base_clean_2024_2025_avec_noms.csv", row.names = FALSE)
 
 ##### OK maintenant je traite les noms, à présent.
 #je vais devoir créer des identifiant sur la base des clients puis ensuite faire un merge*
-#ainsi j'aurait dans lma grosse base, l'identifiant et le noms du pays 
+#ainsi j'aurait dans lma grosse base, l'identifiant et le noms du pays
 #seulement ensuite je pourrais faire  une base avec client__france_1 etc
 
 base_clients <- read_excel("base_clients.xlsx")
 
 # Réorganisation des clients ----
 base_clients <- base_clients %>%
-  mutate(Noms = tolower(Noms) ) %>% 
+  mutate(Noms = tolower(Noms) ) %>%
   arrange(Noms)
 
 liste_clients_effectifs <-tolower(unique(sort(new_data$nom_client)))
@@ -148,7 +148,7 @@ liste_clients_dans_base <- base_clients$Noms
 n = length(liste_clients_effectifs)
 p = length(liste_clients_dans_base)
 
-n-p 
+n-p
 
 liste_clients_dans_base_compl = c(liste_clients_dans_base,
                                   1:71)
@@ -170,7 +170,7 @@ new_data$nom_client <- tolower(new_data$nom_client)
 new_data_id_miss_country  = merge(new_data,names_df, by.x = "nom_client", by.y = "vecteur_client" )
 
 
-#Une fois que j'ai merger, j'ai ma base avec mes noms de client et mes id de clients. 
+#Une fois que j'ai merger, j'ai ma base avec mes noms de client et mes id de clients.
 #Il ne manque plus que merger avec la base de connées qui contient les noms et les pays
 #ce qui va être beacoup plus compliquer.
 
@@ -208,22 +208,22 @@ table(vec)
 new_data_id_miss_country$country <- "non renseigné"
 
 for (i in 1:nrow(new_data)) {
-  
+
   var_test = new_data_id_miss_country$nom_client[i]
   n = length(var_test)
-  
+
   if (var_test %in% liste_clients_dans_base) {
-    
-    
+
+
     #chercher la donnée (l'indice) dans la base des clients
     #j'ai alors mon indice dans la base des client
-    
+
     indice = which(base_clients$Noms==var_test)
-    
+
     #et je peux assigner mon pays à la valeurs dans la basee base_client
     new_data_id_miss_country$country[i] <- base_clients$Pays[indice]
-    
-  } 
+
+  }
 }
 
 #j'ai alors 69 pays renseigné automatiquement, on verra sur le reste à la main.
