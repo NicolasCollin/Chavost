@@ -55,6 +55,7 @@ DATA_PATH = Path(__file__).parents[2] / "data" / "base_cryptee.csv"
 
 # ----------------------------- Helpers --------------------------------------
 
+
 def fmt_int(x: float | int) -> str:
     """Format integer with thin spaces as thousands separators (fallback em-dash)."""
     try:
@@ -62,8 +63,11 @@ def fmt_int(x: float | int) -> str:
     except Exception:
         return "—"
 
+
 # --- Client resolver (id or name -> vecteur_id, display name)
-def _resolve_client(df: pd.DataFrame, query: str) -> tuple[str | None, str | None, list[tuple[str,str]]]:
+def _resolve_client(
+    df: pd.DataFrame, query: str
+) -> tuple[str | None, str | None, list[tuple[str, str]]]:
     """Resolve a client from free-text.
     Returns (vecteur_id, display_name, candidates) where candidates is a list of (id, label)
     when multiple matches exist. If a unique match is found, candidates is empty.
@@ -98,7 +102,9 @@ def _resolve_client(df: pd.DataFrame, query: str) -> tuple[str | None, str | Non
         return str(vid), str(label), []
 
     # Contains (id or name)
-    mask = ids.str.contains(qlow, case=False, na=False) | names.str.contains(qlow, case=False, na=False)
+    mask = ids.str.contains(qlow, case=False, na=False) | names.str.contains(
+        qlow, case=False, na=False
+    )
     cand = df.loc[mask, ["vecteur_id"]].copy()
     if has_names:
         cand["label"] = df.loc[mask, "client_name"].astype(str)
@@ -112,7 +118,11 @@ def _resolve_client(df: pd.DataFrame, query: str) -> tuple[str | None, str | Non
         row = cand.iloc[0]
         return str(row["vecteur_id"]), str(row["label"]), []
     # multiple
-    return None, None, [(str(r["vecteur_id"]), str(r["label"])) for _, r in cand.iterrows()]
+    return (
+        None,
+        None,
+        [(str(r["vecteur_id"]), str(r["label"])) for _, r in cand.iterrows()],
+    )
 
 
 def load_csv_safely(path_or_buf: Any) -> pd.DataFrame:
@@ -170,7 +180,7 @@ def get_data() -> pd.DataFrame:
         df["client"] = df["client_name"].astype(str)
     else:
         df["client"] = df["vecteur_id"]
-    df["prix_total"] = df["prix"]               # business metric = prix total
+    df["prix_total"] = df["prix"]  # business metric = prix total
     return df
 
 
@@ -215,9 +225,20 @@ Bienvenue sur le **tableau de bord ventes** de Chavost.
 
     # Mini trend
     try:
-        by_year = get_data().groupby(["annee", "annee_str"], as_index=False)["prix"].sum().sort_values("annee")
+        by_year = (
+            get_data()
+            .groupby(["annee", "annee_str"], as_index=False)["prix"]
+            .sum()
+            .sort_values("annee")
+        )
         if not by_year.empty:
-            fig = px.line(by_year, x="annee_str", y="prix", markers=True, title="Tendance du prix total par année")
+            fig = px.line(
+                by_year,
+                x="annee_str",
+                y="prix",
+                markers=True,
+                title="Tendance du prix total par année",
+            )
             st.plotly_chart(fig, use_container_width=True)
     except Exception:
         pass
@@ -228,26 +249,44 @@ def render_sidebar():
     """Sophisticated sidebar with grouped icon buttons and active highlight.
     Returns the selected page key and syncs st.session_state.page.
     """
+
     # Helper to draw a nav button with active state
-    def nav_btn(label: str, page_key: str, *, icon: str = "", help: str | None = None) -> None:
+    def nav_btn(
+        label: str, page_key: str, *, icon: str = "", help: str | None = None
+    ) -> None:
         active = st.session_state.page == page_key
         btn_label = f"{icon}  {label}" if icon else label
         # Primary style when active, secondary otherwise
-        if st.button(btn_label, use_container_width=True, type=("primary" if active else "secondary"), key=f"nav_{page_key}", help=help):
+        if st.button(
+            btn_label,
+            use_container_width=True,
+            type=("primary" if active else "secondary"),
+            key=f"nav_{page_key}",
+            help=help,
+        ):
             st.session_state.page = page_key
             st.rerun()
 
     with st.sidebar:
         # Sidebar header
-        st.markdown("<div class='sidebar-title'>🧭 Navigation</div>", unsafe_allow_html=True)
+        st.markdown(
+            "<div class='sidebar-title'>🧭 Navigation</div>", unsafe_allow_html=True
+        )
         if "page" not in st.session_state:
             st.session_state.page = "Accueil"
 
         # ACCUEIL
         with st.container(border=True):
-            nav_btn("Accueil", "Accueil", icon="🏠", help="Page d'introduction et raccourcis")
+            nav_btn(
+                "Accueil",
+                "Accueil",
+                icon="🏠",
+                help="Page d'introduction et raccourcis",
+            )
 
-        st.markdown("<div class='sidebar-subtitle'>Analyses</div>", unsafe_allow_html=True)
+        st.markdown(
+            "<div class='sidebar-subtitle'>Analyses</div>", unsafe_allow_html=True
+        )
         with st.container(border=True):
             nav_btn("Vue d’ensemble", "Analyses:overview", icon="📊")
             nav_btn("Évolution", "Analyses:time", icon="📈")
@@ -257,13 +296,16 @@ def render_sidebar():
             nav_btn("Analyse des prix", "Analyses:prices", icon="💶")
             nav_btn("Table / Export", "Analyses:table", icon="📄")
 
-        st.markdown("<div class='sidebar-subtitle'>Outils</div>", unsafe_allow_html=True)
+        st.markdown(
+            "<div class='sidebar-subtitle'>Outils</div>", unsafe_allow_html=True
+        )
         with st.container(border=True):
             nav_btn("Explorateur client", "Outils:client", icon="🔎")
             nav_btn("Ajouter des ventes", "Outils:add", icon="➕")
             nav_btn("Gestion base", "Outils:db", icon="🧩")
 
         return st.session_state.page
+
 
 def render_onboarding() -> None:
     st.title("Chavost — Tableau de bord ventes")
@@ -288,7 +330,9 @@ def render_onboarding() -> None:
 def build_filters(df: pd.DataFrame):
     """Render filters and return filtered dataframe + options (multi-product)."""
     with st.expander("🎛️ Filtres", expanded=True):
-        years_all = [y for y in df["annee"].dropna().astype(int).sort_values().unique().tolist()]
+        years_all = [
+            y for y in df["annee"].dropna().astype(int).sort_values().unique().tolist()
+        ]
         years_all_str = [str(y) for y in years_all]
         sel_years = st.multiselect("Années", years_all_str, default=years_all_str)
 
@@ -298,16 +342,15 @@ def build_filters(df: pd.DataFrame):
         # --- Sélection multiple de produits (saisie assistée intégrée) ---
         prod_all = sorted(df["nom_produit"].dropna().astype(str).unique().tolist())
         sel_products = st.multiselect(
-            "Produits (sélection multiple)", options=prod_all, default=[],
-            help="Tapez pour filtrer et sélectionnez un ou plusieurs produits. Laissez vide pour tous."
+            "Produits (sélection multiple)",
+            options=prod_all,
+            default=[],
+            help="Tapez pour filtrer et sélectionnez un ou plusieurs produits. Laissez vide pour tous.",
         )
 
         top_n = st.slider("Top N produits", 3, 30, 10, step=1)
 
-    mask = (
-        df["annee_str"].isin(sel_years)
-        & df["type_produit"].isin(sel_types)
-    )
+    mask = df["annee_str"].isin(sel_years) & df["type_produit"].isin(sel_types)
     if sel_products:
         mask &= df["nom_produit"].isin(sel_products)
 
@@ -320,14 +363,26 @@ def build_filters(df: pd.DataFrame):
 
 def render_quality_and_kpis(fdf: pd.DataFrame) -> None:
     with st.expander("🧪 Qualité des données (aperçu)"):
-        dup_subset = ["annee", "type_produit", "nom_produit", "client", "quantite", "prix"]
+        dup_subset = [
+            "annee",
+            "type_produit",
+            "nom_produit",
+            "client",
+            "quantite",
+            "prix",
+        ]
         nb_dup = int(fdf.duplicated(subset=dup_subset, keep=False).sum())
         miss_pct = fdf.isna().mean().round(3) * 100
         c1, c2, c3 = st.columns(3)
         c1.metric("Lignes filtrées", fmt_int(len(fdf)))
         c2.metric("Doublons potentiels", fmt_int(nb_dup))
-        c3.metric("Colonnes numériques", fmt_int(fdf.select_dtypes(include=[np.number]).shape[1]))
-        st.caption("Doublons calculés sur (année, type_produit, nom_produit, client, quantite, prix).")
+        c3.metric(
+            "Colonnes numériques",
+            fmt_int(fdf.select_dtypes(include=[np.number]).shape[1]),
+        )
+        st.caption(
+            "Doublons calculés sur (année, type_produit, nom_produit, client, quantite, prix)."
+        )
         miss_top = miss_pct.sort_values(ascending=False).head(20)
         if not miss_top.empty:
             st.dataframe(miss_top.rename("missing_%"), use_container_width=True)
@@ -351,24 +406,37 @@ def render_analysis_tabs(fdf: pd.DataFrame, top_n: int, active: str) -> None:
         )
         if not by_year.empty:
             fig = px.bar(
-                by_year.sort_values("annee"), x="annee_str", y="prix_total",
-                title="Prix total par année", color_discrete_sequence=BRAND_COLORS,
+                by_year.sort_values("annee"),
+                x="annee_str",
+                y="prix_total",
+                title="Prix total par année",
+                color_discrete_sequence=BRAND_COLORS,
             )
             fig.update_layout(xaxis_title="Année", yaxis_title="Prix total")
             c1.plotly_chart(fig, use_container_width=True)
 
         by_type = (
             fdf.groupby("type_produit", as_index=False)["prix_total"]
-            .sum().sort_values("prix_total", ascending=False)
+            .sum()
+            .sort_values("prix_total", ascending=False)
         )
         if not by_type.empty:
             total = by_type["prix_total"].sum()
-            by_type["label"] = by_type.apply(lambda r: f"{r['type_produit']} — {100*r['prix_total']/total:.1f}%", axis=1)
-            pie = px.pie(
-                by_type, names="label", values="prix_total",
-                title="Répartition du prix total par type", color_discrete_sequence=BRAND_COLORS,
+            by_type["label"] = by_type.apply(
+                lambda r: f"{r['type_produit']} — {100*r['prix_total']/total:.1f}%",
+                axis=1,
             )
-            pie.update_traces(textinfo="percent", hovertemplate="%{label}<br>Prix total=%{value:,.0f}<extra></extra>")
+            pie = px.pie(
+                by_type,
+                names="label",
+                values="prix_total",
+                title="Répartition du prix total par type",
+                color_discrete_sequence=BRAND_COLORS,
+            )
+            pie.update_traces(
+                textinfo="percent",
+                hovertemplate="%{label}<br>Prix total=%{value:,.0f}<extra></extra>",
+            )
             c2.plotly_chart(pie, use_container_width=True)
 
     def section_time():
@@ -379,20 +447,31 @@ def render_analysis_tabs(fdf: pd.DataFrame, top_n: int, active: str) -> None:
         )
         if not by_year.empty:
             line = px.line(
-                by_year.sort_values("annee"), x="annee_str",
+                by_year.sort_values("annee"),
+                x="annee_str",
                 y="prix_total" if metric_choice == "prix_total" else "qte",
-                markers=True, title=f"Évolution de {metric_choice.replace('_', ' ').capitalize()}",
+                markers=True,
+                title=f"Évolution de {metric_choice.replace('_', ' ').capitalize()}",
                 color_discrete_sequence=BRAND_COLORS,
             )
-            line.update_layout(xaxis_title="Année", yaxis_title=metric_choice.replace("_", " ").capitalize())
+            line.update_layout(
+                xaxis_title="Année",
+                yaxis_title=metric_choice.replace("_", " ").capitalize(),
+            )
             st.plotly_chart(line, use_container_width=True)
 
-        bt = fdf.groupby(["annee", "annee_str", "type_produit"], as_index=False)["prix_total"].sum()
+        bt = fdf.groupby(["annee", "annee_str", "type_produit"], as_index=False)[
+            "prix_total"
+        ].sum()
         if not bt.empty:
             fig = px.bar(
-                bt.sort_values("annee"), x="annee_str", y="prix_total",
-                color="type_produit", barmode="group",
-                title="Prix total par année et type", color_discrete_sequence=BRAND_COLORS,
+                bt.sort_values("annee"),
+                x="annee_str",
+                y="prix_total",
+                color="type_produit",
+                barmode="group",
+                title="Prix total par année et type",
+                color_discrete_sequence=BRAND_COLORS,
             )
             fig.update_layout(xaxis_title="Année", yaxis_title="Prix total")
             st.plotly_chart(fig, use_container_width=True)
@@ -402,21 +481,33 @@ def render_analysis_tabs(fdf: pd.DataFrame, top_n: int, active: str) -> None:
         c1, c2 = st.columns(2)
         by_type = (
             fdf.groupby("type_produit", as_index=False)["prix_total"]
-            .sum().sort_values("prix_total", ascending=False)
+            .sum()
+            .sort_values("prix_total", ascending=False)
         )
         if not by_type.empty:
-            bar_t = px.bar(by_type, x="type_produit", y="prix_total",
-                           title="Prix total par type de produit", color_discrete_sequence=BRAND_COLORS)
+            bar_t = px.bar(
+                by_type,
+                x="type_produit",
+                y="prix_total",
+                title="Prix total par type de produit",
+                color_discrete_sequence=BRAND_COLORS,
+            )
             bar_t.update_layout(xaxis_title="Type", yaxis_title="Prix total")
             c1.plotly_chart(bar_t, use_container_width=True)
 
         by_client = (
             fdf.groupby("client", as_index=False)["prix_total"]
-            .sum().sort_values("prix_total", ascending=False)
+            .sum()
+            .sort_values("prix_total", ascending=False)
         )
         if not by_client.empty:
-            bar_c = px.bar(by_client, x="client", y="prix_total",
-                           title="Prix total par client", color_discrete_sequence=BRAND_COLORS)
+            bar_c = px.bar(
+                by_client,
+                x="client",
+                y="prix_total",
+                title="Prix total par client",
+                color_discrete_sequence=BRAND_COLORS,
+            )
             bar_c.update_layout(xaxis_title="Client", yaxis_title="Prix total")
             c2.plotly_chart(bar_c, use_container_width=True)
 
@@ -424,67 +515,124 @@ def render_analysis_tabs(fdf: pd.DataFrame, top_n: int, active: str) -> None:
         st.markdown("**Top produits et analyse détaillée par produit.**")
         top_prix = (
             fdf.groupby("nom_produit", as_index=False)
-              .agg(prix_total=("prix_total", "sum"), quantite=("quantite", "sum"))
-              .sort_values("prix_total", ascending=False)
-              .head(top_n)
+            .agg(prix_total=("prix_total", "sum"), quantite=("quantite", "sum"))
+            .sort_values("prix_total", ascending=False)
+            .head(top_n)
         )
         c1, c2 = st.columns(2)
         if not top_prix.empty:
-            bar_top = px.bar(top_prix, x="nom_produit", y="prix_total",
-                             title=f"Top {top_n} produits — Prix total", color_discrete_sequence=BRAND_COLORS)
+            bar_top = px.bar(
+                top_prix,
+                x="nom_produit",
+                y="prix_total",
+                title=f"Top {top_n} produits — Prix total",
+                color_discrete_sequence=BRAND_COLORS,
+            )
             bar_top.update_layout(xaxis_title="Produit", yaxis_title="Prix total")
             c1.plotly_chart(bar_top, use_container_width=True)
 
-            bar_q = px.bar(top_prix, x="nom_produit", y="quantite",
-                           title=f"Top {top_n} produits — Quantités", color_discrete_sequence=BRAND_COLORS)
+            bar_q = px.bar(
+                top_prix,
+                x="nom_produit",
+                y="quantite",
+                title=f"Top {top_n} produits — Quantités",
+                color_discrete_sequence=BRAND_COLORS,
+            )
             bar_q.update_layout(xaxis_title="Produit", yaxis_title="Quantité")
             c2.plotly_chart(bar_q, use_container_width=True)
 
-        prods = top_prix["nom_produit"].tolist() or sorted(fdf["nom_produit"].unique().tolist())
-        sel_prod = st.selectbox("Produit (détail)", prods, help="Choisissez un produit pour voir son historique.")
+        prods = top_prix["nom_produit"].tolist() or sorted(
+            fdf["nom_produit"].unique().tolist()
+        )
+        sel_prod = st.selectbox(
+            "Produit (détail)",
+            prods,
+            help="Choisissez un produit pour voir son historique.",
+        )
         if sel_prod:
             p = (
                 fdf.loc[fdf["nom_produit"] == sel_prod]
-                  .groupby(["annee", "annee_str"], as_index=False)
-                  .agg(prix_total=("prix_total", "sum"), quantite=("quantite", "sum"))
-                  .sort_values("annee")
+                .groupby(["annee", "annee_str"], as_index=False)
+                .agg(prix_total=("prix_total", "sum"), quantite=("quantite", "sum"))
+                .sort_values("annee")
             )
             if not p.empty:
-                fig1 = px.bar(p, x="annee_str", y="prix_total",
-                              title=f"Prix total par année — {sel_prod}", color_discrete_sequence=BRAND_COLORS)
-                fig2 = px.line(p, x="annee_str", y="quantite", markers=True,
-                               title=f"Quantités par année — {sel_prod}", color_discrete_sequence=BRAND_COLORS)
+                fig1 = px.bar(
+                    p,
+                    x="annee_str",
+                    y="prix_total",
+                    title=f"Prix total par année — {sel_prod}",
+                    color_discrete_sequence=BRAND_COLORS,
+                )
+                fig2 = px.line(
+                    p,
+                    x="annee_str",
+                    y="quantite",
+                    markers=True,
+                    title=f"Quantités par année — {sel_prod}",
+                    color_discrete_sequence=BRAND_COLORS,
+                )
                 st.plotly_chart(fig1, use_container_width=True)
                 st.plotly_chart(fig2, use_container_width=True)
 
     def section_map():
         st.markdown("**Export par pays** — somme du prix total par pays.")
-        by_country = fdf.groupby("country", as_index=False)["prix_total"].sum().sort_values("prix_total", ascending=False)
+        by_country = (
+            fdf.groupby("country", as_index=False)["prix_total"]
+            .sum()
+            .sort_values("prix_total", ascending=False)
+        )
         if by_country.empty:
             st.info("Aucun pays disponible dans le filtre courant.")
         else:
-            map_fig = px.choropleth(by_country, locations="country", locationmode="country names",
-                                    color="prix_total", title="Carte des exportations (prix total)",
-                                    color_continuous_scale="Blues")
+            map_fig = px.choropleth(
+                by_country,
+                locations="country",
+                locationmode="country names",
+                color="prix_total",
+                title="Carte des exportations (prix total)",
+                color_continuous_scale="Blues",
+            )
             map_fig.update_layout(margin=dict(l=0, r=0, t=60, b=0))
             st.plotly_chart(map_fig, use_container_width=True)
-            st.dataframe(by_country.rename(columns={"prix_total": "prix_total_sum"}), use_container_width=True)
+            st.dataframe(
+                by_country.rename(columns={"prix_total": "prix_total_sum"}),
+                use_container_width=True,
+            )
 
     def section_prices():
-        st.markdown("**Structure des prix** — distribution, écarts et relation prix-quantité.")
+        st.markdown(
+            "**Structure des prix** — distribution, écarts et relation prix-quantité."
+        )
         c1, c2 = st.columns(2)
         if fdf["prix"].notna().sum() > 0:
-            hist = px.histogram(fdf, x="prix", nbins=40, title="Distribution du champ ‘prix’",
-                                color_discrete_sequence=BRAND_COLORS)
+            hist = px.histogram(
+                fdf,
+                x="prix",
+                nbins=40,
+                title="Distribution du champ ‘prix’",
+                color_discrete_sequence=BRAND_COLORS,
+            )
             c1.plotly_chart(hist, use_container_width=True)
         if fdf["type_produit"].nunique() > 0:
-            box = px.box(fdf, x="type_produit", y="prix", points="outliers",
-                         title="Prix par type de produit", color_discrete_sequence=BRAND_COLORS)
+            box = px.box(
+                fdf,
+                x="type_produit",
+                y="prix",
+                points="outliers",
+                title="Prix par type de produit",
+                color_discrete_sequence=BRAND_COLORS,
+            )
             c2.plotly_chart(box, use_container_width=True)
         if fdf["quantite"].notna().sum() > 0:
             sc = px.scatter(
-                fdf, x="quantite", y="prix", color="type_produit", title="Prix vs Quantité",
-                hover_data=["nom_produit", "annee_str", "client"], color_discrete_sequence=BRAND_COLORS,
+                fdf,
+                x="quantite",
+                y="prix",
+                color="type_produit",
+                title="Prix vs Quantité",
+                hover_data=["nom_produit", "annee_str", "client"],
+                color_discrete_sequence=BRAND_COLORS,
             )
             st.plotly_chart(sc, use_container_width=True)
 
@@ -493,7 +641,12 @@ def render_analysis_tabs(fdf: pd.DataFrame, top_n: int, active: str) -> None:
         st.dataframe(fdf, use_container_width=True, height=480)
         buf = io.StringIO()
         fdf.to_csv(buf, index=False)
-        st.download_button("Télécharger (CSV)", buf.getvalue(), file_name="export_filtre.csv", mime="text/csv")
+        st.download_button(
+            "Télécharger (CSV)",
+            buf.getvalue(),
+            file_name="export_filtre.csv",
+            mime="text/csv",
+        )
 
     sections = {
         "Vue d’ensemble": section_overview,
@@ -509,10 +662,15 @@ def render_analysis_tabs(fdf: pd.DataFrame, top_n: int, active: str) -> None:
 
 def render_tools(df: pd.DataFrame, active_tool: str):
     def tool_client_explorer():
-        st.markdown("Explorez un client par **numéro (vecteur_id)** ou **nom**. La saisie déclenche la recherche automatiquement.")
+        st.markdown(
+            "Explorez un client par **numéro (vecteur_id)** ou **nom**. La saisie déclenche la recherche automatiquement."
+        )
 
-        q = st.text_input("Nom ou identifiant client", key="client_query", placeholder="Exemples : 1, 12, 305, Dupont…")
-
+        q = st.text_input(
+            "Nom ou identifiant client",
+            key="client_query",
+            placeholder="Exemples : 1, 12, 305, Dupont…",
+        )
 
         vid, label, many = _resolve_client(df, q)
 
@@ -525,13 +683,17 @@ def render_tools(df: pd.DataFrame, active_tool: str):
 
         if not vid:
             if q.strip():
-                st.warning("Aucun client correspondant. Essayez un autre nom/identifiant.")
+                st.warning(
+                    "Aucun client correspondant. Essayez un autre nom/identifiant."
+                )
             return
 
         # --- Historique & KPIs (filter by vecteur_id ONLY) ---
         sdf = df.loc[df["vecteur_id"].astype(str) == str(vid)].copy()
         if sdf.empty:
-            st.info("Aucun historique pour ce client. Vous pouvez **ajouter une vente** ci‑dessous.")
+            st.info(
+                "Aucun historique pour ce client. Vous pouvez **ajouter une vente** ci‑dessous."
+            )
             return
 
         display_name = label if label and label.strip() else str(vid)
@@ -543,7 +705,11 @@ def render_tools(df: pd.DataFrame, active_tool: str):
         # Shortcut to add a sale for this client
         add_col1, add_col2 = st.columns([1, 4])
         with add_col1:
-            if st.button("➕ Ajouter une vente pour ce client", type="primary", use_container_width=True):
+            if st.button(
+                "➕ Ajouter une vente pour ce client",
+                type="primary",
+                use_container_width=True,
+            ):
                 st.session_state.page = "Outils:add"
                 st.rerun()
 
@@ -558,7 +724,9 @@ def render_tools(df: pd.DataFrame, active_tool: str):
         st.divider()
 
         by_cty = (
-            sdf.groupby("country", as_index=False)["prix_total"].sum().sort_values("prix_total", ascending=False)
+            sdf.groupby("country", as_index=False)["prix_total"]
+            .sum()
+            .sort_values("prix_total", ascending=False)
         )
         cta, ctb = st.columns([1.2, 1.8])
         with cta:
@@ -567,50 +735,86 @@ def render_tools(df: pd.DataFrame, active_tool: str):
         with ctb:
             if not by_cty.empty:
                 map_fig = px.choropleth(
-                    by_cty, locations="country", locationmode="country names",
-                    color="prix_total", title=f"Carte des exportations — {display_name}", color_continuous_scale="Blues"
+                    by_cty,
+                    locations="country",
+                    locationmode="country names",
+                    color="prix_total",
+                    title=f"Carte des exportations — {display_name}",
+                    color_continuous_scale="Blues",
                 )
                 map_fig.update_layout(margin=dict(l=0, r=0, t=60, b=0))
                 st.plotly_chart(map_fig, use_container_width=True)
 
-        by_y = sdf.groupby(["annee", "annee_str"], as_index=False)["prix_total"].sum().sort_values("annee")
+        by_y = (
+            sdf.groupby(["annee", "annee_str"], as_index=False)["prix_total"]
+            .sum()
+            .sort_values("annee")
+        )
         if not by_y.empty:
-            fig = px.line(by_y, x="annee_str", y="prix_total", markers=True, title=f"Évolution — {display_name}")
+            fig = px.line(
+                by_y,
+                x="annee_str",
+                y="prix_total",
+                markers=True,
+                title=f"Évolution — {display_name}",
+            )
             st.plotly_chart(fig, use_container_width=True)
 
         left, right = st.columns(2)
         by_prod = (
             sdf.groupby("nom_produit", as_index=False)
-               .agg(prix_total=("prix_total", "sum"), quantite=("quantite", "sum"))
-               .sort_values("prix_total", ascending=False)
-               .head(15)
+            .agg(prix_total=("prix_total", "sum"), quantite=("quantite", "sum"))
+            .sort_values("prix_total", ascending=False)
+            .head(15)
         )
         if not by_prod.empty:
             left.plotly_chart(
-                px.bar(by_prod, x="nom_produit", y="prix_total", title="Top produits — prix total"),
+                px.bar(
+                    by_prod,
+                    x="nom_produit",
+                    y="prix_total",
+                    title="Top produits — prix total",
+                ),
                 use_container_width=True,
             )
         by_type = (
-            sdf.groupby("type_produit", as_index=False)["prix_total"].sum().sort_values("prix_total", ascending=False)
+            sdf.groupby("type_produit", as_index=False)["prix_total"]
+            .sum()
+            .sort_values("prix_total", ascending=False)
         )
         if not by_type.empty:
             right.plotly_chart(
-                px.bar(by_type, x="type_produit", y="prix_total", title="Répartition par type"),
+                px.bar(
+                    by_type,
+                    x="type_produit",
+                    y="prix_total",
+                    title="Répartition par type",
+                ),
                 use_container_width=True,
             )
 
         st.markdown("**Commandes**")
-        st.dataframe(sdf.sort_values(["annee", "nom_produit"]).reset_index(drop=True), use_container_width=True, height=380)
+        st.dataframe(
+            sdf.sort_values(["annee", "nom_produit"]).reset_index(drop=True),
+            use_container_width=True,
+            height=380,
+        )
 
     def tool_add():
-        st.markdown("**Ajouter des ventes (multi‑lignes)** — saisissez plusieurs produits avec quantités et prix, puis enregistrez en une fois.")
+        st.markdown(
+            "**Ajouter des ventes (multi‑lignes)** — saisissez plusieurs produits avec quantités et prix, puis enregistrez en une fois."
+        )
 
         # Prefill from client explorer if available
         prefill_id = st.session_state.get("selected_client_id", "")
         prefill_label = st.session_state.get("selected_client_label", "")
         if prefill_id:
-            st.info(f"Client pré‑sélectionné : **{prefill_label or prefill_id}** (vecteur_id = {prefill_id}).")
-            clear_prefill = st.button("Effacer la présélection client", key="clear_prefill")
+            st.info(
+                f"Client pré‑sélectionné : **{prefill_label or prefill_id}** (vecteur_id = {prefill_id})."
+            )
+            clear_prefill = st.button(
+                "Effacer la présélection client", key="clear_prefill"
+            )
             if clear_prefill:
                 st.session_state.pop("selected_client_id", None)
                 st.session_state.pop("selected_client_label", None)
@@ -624,38 +828,70 @@ def render_tools(df: pd.DataFrame, active_tool: str):
             gap_countries = sorted(px.data.gapminder()["country"].unique().tolist())
         except Exception:
             gap_countries = []
-        country_options = sorted(set(gap_countries) | set(df["country"].dropna().astype(str).unique().tolist()))
+        country_options = sorted(
+            set(gap_countries)
+            | set(df["country"].dropna().astype(str).unique().tolist())
+        )
 
         # Valeurs par défaut
         default_year = int(df["annee"].dropna().max()) if not df.empty else 2024
 
         # Gabarit d'une ligne à saisir
-        seed = pd.DataFrame([
-            {
-                "annee": default_year,
-                "type_produit": type_options[0] if type_options else "",
-                "nom_produit": prod_options[0] if prod_options else "",
-                "quantite": 0.0,
-                "prix": 0.0,
-                "client_input": str(prefill_id) if prefill_id else "",  # id client (vecteur_id) ou nom (client_name futur)
-                "country": "France" if "France" in country_options else (country_options[0] if country_options else "France"),
-            }
-        ])
+        seed = pd.DataFrame(
+            [
+                {
+                    "annee": default_year,
+                    "type_produit": type_options[0] if type_options else "",
+                    "nom_produit": prod_options[0] if prod_options else "",
+                    "quantite": 0.0,
+                    "prix": 0.0,
+                    "client_input": str(prefill_id)
+                    if prefill_id
+                    else "",  # id client (vecteur_id) ou nom (client_name futur)
+                    "country": "France"
+                    if "France" in country_options
+                    else (country_options[0] if country_options else "France"),
+                }
+            ]
+        )
 
-        st.caption("Astuce : utilisez le bouton **+** pour ajouter des lignes. Les menus sont filtrables au clavier.")
+        st.caption(
+            "Astuce : utilisez le bouton **+** pour ajouter des lignes. Les menus sont filtrables au clavier."
+        )
         edited = st.data_editor(
             seed,
             num_rows="dynamic",
             use_container_width=True,
             height=360,
             column_config={
-                "annee": st.column_config.NumberColumn("Année", min_value=1900, max_value=2100, step=1),
-                "type_produit": st.column_config.SelectboxColumn("Type de produit", options=type_options, help="Commencez à taper pour filtrer — vous pouvez aussi laisser vide et saisir plus tard."),
-                "nom_produit": st.column_config.SelectboxColumn("Nom du produit", options=prod_options, help="Sélectionnez ou tapez pour filtrer."),
-                "quantite": st.column_config.NumberColumn("Quantité", min_value=0.0, step=1.0),
-                "prix": st.column_config.NumberColumn("Prix total", min_value=0.0, step=1.0),
-                "client_input": st.column_config.TextColumn("Client (identifiant ou nom)", help="Saisissez l'identifiant (vecteur_id) actuel ou le nom du client (quand disponible)."),
-                "country": st.column_config.SelectboxColumn("Pays", options=country_options, help="Liste élargie — filtrable au clavier."),
+                "annee": st.column_config.NumberColumn(
+                    "Année", min_value=1900, max_value=2100, step=1
+                ),
+                "type_produit": st.column_config.SelectboxColumn(
+                    "Type de produit",
+                    options=type_options,
+                    help="Commencez à taper pour filtrer — vous pouvez aussi laisser vide et saisir plus tard.",
+                ),
+                "nom_produit": st.column_config.SelectboxColumn(
+                    "Nom du produit",
+                    options=prod_options,
+                    help="Sélectionnez ou tapez pour filtrer.",
+                ),
+                "quantite": st.column_config.NumberColumn(
+                    "Quantité", min_value=0.0, step=1.0
+                ),
+                "prix": st.column_config.NumberColumn(
+                    "Prix total", min_value=0.0, step=1.0
+                ),
+                "client_input": st.column_config.TextColumn(
+                    "Client (identifiant ou nom)",
+                    help="Saisissez l'identifiant (vecteur_id) actuel ou le nom du client (quand disponible).",
+                ),
+                "country": st.column_config.SelectboxColumn(
+                    "Pays",
+                    options=country_options,
+                    help="Liste élargie — filtrable au clavier.",
+                ),
             },
             key="add_sales_editor",
         )
@@ -671,7 +907,11 @@ def render_tools(df: pd.DataFrame, active_tool: str):
                 rows_to_add = []
                 for _, r in edited.iterrows():
                     # Ne conserver que les lignes réellement saisies (nom_produit non vide)
-                    if str(r.get("nom_produit", "")).strip() == "" and float(r.get("quantite", 0) or 0) == 0 and float(r.get("prix", 0) or 0) == 0:
+                    if (
+                        str(r.get("nom_produit", "")).strip() == ""
+                        and float(r.get("quantite", 0) or 0) == 0
+                        and float(r.get("prix", 0) or 0) == 0
+                    ):
                         continue
                     new_row = {
                         "annee": int(r.get("annee", default_year) or default_year),
@@ -679,13 +919,22 @@ def render_tools(df: pd.DataFrame, active_tool: str):
                         "nom_produit": str(r.get("nom_produit", "")).strip(),
                         "quantite": float(r.get("quantite", 0) or 0),
                         "prix": float(r.get("prix", 0) or 0),
-                        "vecteur_id": str(r.get("client_input", "")).strip() if not has_client_name_col else "",
+                        "vecteur_id": str(r.get("client_input", "")).strip()
+                        if not has_client_name_col
+                        else "",
                         "country": str(r.get("country", "")).strip(),
                     }
                     if has_client_name_col:
                         new_row["client_name"] = str(r.get("client_input", "")).strip()
                     # Validation minimale
-                    for c in ["annee","type_produit","nom_produit","quantite","prix","country"]:
+                    for c in [
+                        "annee",
+                        "type_produit",
+                        "nom_produit",
+                        "quantite",
+                        "prix",
+                        "country",
+                    ]:
                         if c not in base_df.columns:
                             raise ValueError(f"Colonne manquante dans le fichier : {c}")
                     rows_to_add.append(new_row)
@@ -694,26 +943,42 @@ def render_tools(df: pd.DataFrame, active_tool: str):
                     st.warning("Aucune ligne à enregistrer.")
                     return
 
-                base_df = pd.concat([base_df, pd.DataFrame(rows_to_add)], ignore_index=True)
+                base_df = pd.concat(
+                    [base_df, pd.DataFrame(rows_to_add)], ignore_index=True
+                )
                 base_df.to_csv(DATA_PATH, index=False)
-                st.success(f"{len(rows_to_add)} ligne(s) ajoutée(s) et sauvegardée(s) avec succès.")
+                st.success(
+                    f"{len(rows_to_add)} ligne(s) ajoutée(s) et sauvegardée(s) avec succès."
+                )
                 st.cache_data.clear()
             except Exception as e:
                 st.error(f"Échec de l'enregistrement : {e}")
 
     def tool_base():
-        st.markdown("🧩 **Gestion de la base de données** — visualisez, éditez, exportez, supprimez des lignes, rechargez la base.")
+        st.markdown(
+            "🧩 **Gestion de la base de données** — visualisez, éditez, exportez, supprimez des lignes, rechargez la base."
+        )
         base_df = load_csv_safely(DATA_PATH)
         base_df.columns = [c.strip().lower() for c in base_df.columns]
-        edited = st.data_editor(base_df, use_container_width=True, num_rows="dynamic", height=500, key="data_editor")
+        edited = st.data_editor(
+            base_df,
+            use_container_width=True,
+            num_rows="dynamic",
+            height=500,
+            key="data_editor",
+        )
         c1, c2, c3 = st.columns(3)
         buf = io.StringIO()
         edited.to_csv(buf, index=False)
-        c1.download_button("Exporter CSV", buf.getvalue(), file_name="base_ventes.csv", mime="text/csv")
+        c1.download_button(
+            "Exporter CSV", buf.getvalue(), file_name="base_ventes.csv", mime="text/csv"
+        )
         delete_rows = c2.button("Supprimer lignes sélectionnées")
         refresh_btn = c3.button("Rafraîchir le cache")
         if delete_rows:
-            st.warning("Suppression : supprimez directement les lignes dans le tableau puis exportez/sauvegardez.")
+            st.warning(
+                "Suppression : supprimez directement les lignes dans le tableau puis exportez/sauvegardez."
+            )
         if refresh_btn:
             st.cache_data.clear()
             st.success("Cache rafraîchi. Rechargez la page pour voir les changements.")
