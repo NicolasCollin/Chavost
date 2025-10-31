@@ -1,37 +1,39 @@
+# =============================================================================
+# Chavost Dashboard Streamlit App
+#
+# This file implements the Streamlit dashboard for Chavost, providing
+# interactive analytics and visualizations for sales and price data.
+# The dashboard allows users to explore and filter sales by year, product type,
+# channel, and product, and displays KPIs, trends, breakdowns, and export tools.
+# =============================================================================
 # ====================== Chavost Dashboard (polished) ======================
-from pathlib import Path  # path ops
-from typing import Any  # NEW
-import io  # csv export buffer
-import numpy as np  # numeric ops
-import pandas as pd  # data wrangling
-import plotly.express as px  # charts
-import streamlit as st  # UI
+from pathlib import Path
+from typing import Any
+import io
+import numpy as np
+import pandas as pd
+import plotly.express as px
+import streamlit as st
 
 # ---------- Page config & style ----------
-st.set_page_config(page_title="Chavost — Tableau de bord", layout="wide")  # wide layout
+st.set_page_config(page_title="Chavost — Tableau de bord", layout="wide")
 
-# Plotly look & feel (simple brand)                                            # theme
-px.defaults.template = (
-    "plotly_white"  # clean background                     # default template
-)
-BRAND_COLORS = (
-    px.colors.qualitative.Set2
-)  # friendly qualitative palette     # color palette
+# Plotly look & feel (simple brand)
+px.defaults.template = "plotly_white"
+BRAND_COLORS = px.colors.qualitative.Set2
 
 
-# ---------- Helpers ----------
-def fmt_int(x: float | int) -> str:  # pretty integers
-    """Format integer with space as thousands separator; return em dash on error."""
+# ---------- Helper functions ----------
+def fmt_int(x: float | int) -> str:
+    """Format an integer with a space as thousands separator, or em dash on error."""
     try:
-        return f"{int(x):,}".replace(",", " ")  # e.g., 12 345
+        return f"{int(x):,}".replace(",", " ")
     except Exception:
         return "—"
 
 
-def load_csv_safely(
-    path_or_buf: Any,
-) -> pd.DataFrame:  # accept file path or UploadedFile
-    """Load CSV with multiple parsing attempts to handle different formats."""
+def load_csv_safely(path_or_buf: Any) -> pd.DataFrame:
+    """Attempt to load a CSV file with several parsing strategies for robustness."""
     for kwargs in (
         dict(sep=",", thousands=",", decimal="."),
         dict(sep=",", thousands=" ", decimal=","),
@@ -44,29 +46,28 @@ def load_csv_safely(
                 return df
         except Exception:
             continue
-    return pd.read_csv(path_or_buf)  # last resort
+    return pd.read_csv(path_or_buf)
 
 
 # ---------- Data loading ----------
-DATA_PATH = (
-    Path(__file__).parents[2] / "data" / "base_cryptee.csv"
-)  # ../../data/base_cryptee.csv
+DATA_PATH = Path(__file__).parents[2] / "data" / "base_cryptee.csv"
 
 
 @st.cache_data(show_spinner=False)
-def get_data(
-    uploaded: Any,
-) -> pd.DataFrame:  # uploaded can be Streamlit UploadedFile or None
-    """Load and clean data from CSV file (uploaded or default)."""
+def get_data(uploaded: Any) -> pd.DataFrame:
+    """
+    Load and clean data from a CSV file (either uploaded or default path).
+    Ensures required columns, correct types, and prepares for analysis.
+    """
     if uploaded is not None:
-        df = load_csv_safely(uploaded)  # user file
+        df = load_csv_safely(uploaded)
     else:
         if not DATA_PATH.exists():
             raise FileNotFoundError(f"CSV introuvable : {DATA_PATH}")
-        df = load_csv_safely(DATA_PATH)  # project file
+        df = load_csv_safely(DATA_PATH)
 
-    # Normalize and type                                                          # clean schema
-    df.columns = [c.strip().lower() for c in df.columns]  # lower snake-ish
+    # Normalize columns and enforce schema
+    df.columns = [c.strip().lower() for c in df.columns]
     expected = [
         "annee",
         "type_produit",
@@ -74,27 +75,25 @@ def get_data(
         "quantite",
         "prix",
         "vecteur_id",
-    ]  # required cols
+    ]
     missing = [c for c in expected if c not in df.columns]
     if missing:
         raise ValueError(f"Colonnes manquantes dans le CSV : {missing}")
 
-    df["annee"] = pd.to_numeric(df["annee"], errors="coerce").astype(
-        "Int64"
-    )  # year as nullable int
-    df["quantite"] = pd.to_numeric(df["quantite"], errors="coerce")  # qty numeric
-    df["prix"] = pd.to_numeric(df["prix"], errors="coerce")  # price/amount numeric
-    df["type_produit"] = df["type_produit"].astype(str)  # category
-    df["nom_produit"] = df["nom_produit"].astype(str)  # product name
-    df["vecteur_id"] = df["vecteur_id"].astype(str)  # channel id (string)
-    df = df.dropna(subset=["annee", "quantite", "prix"]).copy()  # keep valid rows
+    df["annee"] = pd.to_numeric(df["annee"], errors="coerce").astype("Int64")
+    df["quantite"] = pd.to_numeric(df["quantite"], errors="coerce")
+    df["prix"] = pd.to_numeric(df["prix"], errors="coerce")
+    df["type_produit"] = df["type_produit"].astype(str)
+    df["nom_produit"] = df["nom_produit"].astype(str)
+    df["vecteur_id"] = df["vecteur_id"].astype(str)
+    df = df.dropna(subset=["annee", "quantite", "prix"]).copy()
 
-    # Create categorical year string to avoid 2023.5 ticks                        # <-- fix weird year ticks
-    df["annee_str"] = df["annee"].astype("Int64").astype(str)  # categorical year labels
+    # Use categorical string for years to avoid float ticks in plots
+    df["annee_str"] = df["annee"].astype("Int64").astype(str)
     return df
 
 
-# ---------- Sidebar: data source ----------
+# ---------- Sidebar: Data Source ----------
 with st.sidebar:
     st.header("Données")  # data section
     up = st.file_uploader(
@@ -109,19 +108,17 @@ with st.sidebar:
     )
     st.caption("Conseil : garde la même structure de colonnes.")
 
-# ---------- Load & derive ----------
+# ---------- Data Loading & Derivation ----------
 try:
     df = get_data(up)  # read data
 except Exception as e:
     st.error(f"Erreur de chargement : {e}")
     st.stop()
 
-df["canal"] = df["vecteur_id"]  # clearer display name for channel
-df["ca"] = (
-    df["quantite"] * df["prix"] if price_is_unit else df["prix"]
-)  # revenue definition
+df["canal"] = df["vecteur_id"]
+df["ca"] = df["quantite"] * df["prix"] if price_is_unit else df["prix"]
 
-# ---------- Hero / Onboarding ----------
+# ---------- Main Title & Onboarding ----------
 st.title("Chavost — Tableau de bord ventes")  # title
 with st.expander("🧭 Comment utiliser (guide rapide)", expanded=True):
     st.markdown(
@@ -141,13 +138,13 @@ with st.expander("🧭 Comment utiliser (guide rapide)", expanded=True):
         """
     )
 
-# ---------- Sidebar: filters ----------
+# ---------- Sidebar: Filters ----------
 with st.sidebar:
     st.header("Filtres")
     years_all = [
         y for y in df["annee"].dropna().astype(int).sort_values().unique().tolist()
-    ]  # all years as int
-    years_all_str = [str(y) for y in years_all]  # string labels
+    ]
+    years_all_str = [str(y) for y in years_all]
     sel_years = st.multiselect(
         "Années",
         years_all_str,
@@ -186,20 +183,20 @@ mask = (
     df["annee_str"].isin(sel_years)
     & df["type_produit"].isin(sel_types)
     & df["canal"].isin(sel_canals)
-)  # filter base
+)
 if name_query.strip():
     mask &= df["nom_produit"].str.contains(
         name_query.strip(), case=False, na=False
-    )  # name filter
+    )
 
-fdf = df.loc[mask].copy()  # filtered df
+fdf = df.loc[mask].copy()
 if fdf.empty:
     st.warning(
         "Aucune ligne avec ces filtres. Ajustez les sélections dans la barre latérale."
     )
     st.stop()
 
-# ---------- Data quality quick view ----------
+# ---------- Data Quality Quick View ----------
 with st.expander("🧪 Qualité des données (aperçu)"):
     dup_subset = [
         "annee",
@@ -208,9 +205,9 @@ with st.expander("🧪 Qualité des données (aperçu)"):
         "canal",
         "quantite",
         "prix",
-    ]  # candidate key
-    nb_dup = int(fdf.duplicated(subset=dup_subset, keep=False).sum())  # possible dups
-    miss_pct = fdf.isna().mean().round(3) * 100  # missing %
+    ]
+    nb_dup = int(fdf.duplicated(subset=dup_subset, keep=False).sum())
+    miss_pct = fdf.isna().mean().round(3) * 100
     c1, c2, c3 = st.columns(3)
     c1.metric("Lignes filtrées", fmt_int(len(fdf)))
     c2.metric("Doublons potentiels", fmt_int(nb_dup))
@@ -249,7 +246,6 @@ with tab_overview:
     st.markdown("**Résumé visuel :** volumes et CA par année et par type.")
     c1, c2 = st.columns([2, 1])
 
-    # CA by year (categorical x using year string)                                 # bar
     by_year = fdf.groupby(["annee", "annee_str"], as_index=False).agg(
         ca=("ca", "sum"), qte=("quantite", "sum")
     )
@@ -264,7 +260,6 @@ with tab_overview:
         fig.update_layout(xaxis_title="Année", yaxis_title="CA")
         c1.plotly_chart(fig, use_container_width=True)
 
-    # Pie share by product type with % in legend                                    # pie with % in legend
     by_type = (
         fdf.groupby("type_produit", as_index=False)["ca"]
         .sum()
@@ -324,7 +319,7 @@ with tab_time:
         fig.update_layout(xaxis_title="Année", yaxis_title="CA")
         st.plotly_chart(fig, use_container_width=True)
 
-# ===================== Tab: Types & channels =====================
+# ===================== Tab: Types & Channels =====================
 with tab_types:
     st.markdown("**Comparatif par familles et par canaux de vente.**")
     c1, c2 = st.columns(2)
