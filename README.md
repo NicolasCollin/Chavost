@@ -30,7 +30,7 @@ Les systèmes actuels ne permettent d’exploiter qu’une faible part de l’in
 - **Nettoyage/structuration** des fichiers Excel hétérogènes.  
 - **Construction d’une base tabulaire** avec les champs clefs (client, produit/cuvée, catégorie, format, année, quantité EQB, montant HT).  
 - **Automatisation** du pipeline pour rejouer le traitement lors des mises à jour.  
-- **Application** (base) pour parcourir et visualiser les données préparées.  
+- **Application Streamlit** pleinement implémentée, avec des tableaux de bord pour KPIs, tendances et filtres.  
 - Préparation des livrables **Power BI** et **Streamlit** pour la suite du projet.
 
 ---
@@ -40,18 +40,24 @@ Les systèmes actuels ne permettent d’exploiter qu’une faible part de l’in
 ```
 chavost/
 ├── data/
-│   ├── raw/              # Données brutes Excel
-│   └── processed/        # Données nettoyées et prêtes à l’analyse
+│   └── base_cryptee.csv        # Jeu de données principal (CSV chiffré)
 ├── src/
-│   ├── main.py           # Point d’entrée principal
-│   └── utils/            # Fonctions utilitaires et script R (Transformation des données)
-├── .gitlab-ci.yml        # Pipeline GitLab CI/CD
-├── pyproject.toml        # Fichier de configuration uv
-├── README.md             # Documentation principale
-└── .gitignore            # Fichiers et dossiers exclus du suivi Git
+│   ├── interface/              # Interface Streamlit principale
+│   │   └── app.py
+│   ├── tests/                  # Tests unitaires
+│   │   └── test_main.py
+│   └── utils/                  # Scripts utilitaires et fonctions
+│       ├── __init__.py
+│       ├── aliases.py
+│       ├── fichier_R_2_engineer.R
+│       └── main.py
+├── .gitlab-ci.yml              # Pipeline CI/CD GitLab
+├── .pre-commit-config.yaml     # Configuration du pré-commit
+├── .python-version             # Version Python utilisée
+├── pyproject.toml              # Dépendances et configuration uv
+├── README.md                   # Documentation principale
+└── uv.lock                     # Verrouillage des dépendances
 ```
-
-> Remarque : l’arborescence peut évoluer ; reportez-vous aux sous-dossiers `src/` pour le détail du code source.
 
 ---
 
@@ -81,14 +87,16 @@ uv sync
 uv run main
 ```
 
+> Cette commande lance l’application Streamlit avec les tableaux de bord interactifs.
+
 ---
 
 ## 7) Stack technique
 
 - **Python** (3.13), **Pandas** pour le traitement.  
 - **uv** pour les environnements et l’exécution.  
-- **Streamlit / HTML / CSS** pour l’interface (prochain jalon).  
-- **Power BI** pour le rapport BI (prochain jalon).  
+- **Streamlit** pour l’interface utilisateur finalisée, avec des visualisations interactives basées sur **Plotly**.  
+- **Power BI** pour le rapport BI (jalon BI finalisé).  
 - Gestion de version **GitLab**, CI/CD en cours de préparation selon les besoins du client.
 
 ---
@@ -97,9 +105,9 @@ uv run main
 
 - **S1 — Cadrage** : entretiens, identification des besoins, planning.  
 - **S2 — Data Eng.** : nettoyage Excel → base tabulaire, automatisation.  
-- **S3 — BI** : construction du rapport Power BI (ventes par pays/importateur/cuvée/format, saisonnalité).  
-- **S4 — App** : interface Streamlit pour exploration dynamique et filtres.  
-- **S5 — Itérations** : retours client, priorisation des KPIs, mise en production graduelle.
+- **S3 — BI** : construction du rapport Power BI (ventes par pays/importateur/cuvée/format, saisonnalité) — **terminé**.  
+- **S4 — App** : interface Streamlit pour exploration dynamique et filtres — **complétée et en production**.  
+- **S5 — Itérations** : retours client, priorisation des KPIs, mise en production graduelle — **en cours**.
 
 ---
 

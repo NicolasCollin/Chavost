@@ -1,10 +1,12 @@
-import subprocess  # to run a CLI command
-import sys  # to get current Python executable
-from pathlib import Path  # to build a file path
+"""Script to launch the Streamlit app."""
+
+import subprocess
+import sys
+from pathlib import Path
 
 
 def main():
-    # chemin vers ton app Streamlit
+    """Launch the Streamlit interface."""
     app_path = Path(__file__).parent / "interface" / "app.py"
     subprocess.run(
         [sys.executable, "-m", "streamlit", "run", str(app_path)], check=True
