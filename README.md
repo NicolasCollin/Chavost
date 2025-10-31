@@ -43,9 +43,12 @@ chavost/
 │   └── base_cryptee.csv        # Jeu de données principal (CSV chiffré)
 ├── src/
 │   ├── main.py                 # Point d'entrée principal
+│   ├── __init__.py
 │   ├── interface/              # Interface Streamlit principale
+│   │   ├── __init__.py
 │   │   └── app.py
 │   ├── tests/                  # Tests unitaires
+│   │   ├── __init__.py
 │   │   └── test_main.py
 │   └── utils/                  # Scripts utilitaires et fonctions
 │       ├── __init__.py
