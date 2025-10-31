@@ -185,9 +185,7 @@ mask = (
     & df["canal"].isin(sel_canals)
 )
 if name_query.strip():
-    mask &= df["nom_produit"].str.contains(
-        name_query.strip(), case=False, na=False
-    )
+    mask &= df["nom_produit"].str.contains(name_query.strip(), case=False, na=False)
 
 fdf = df.loc[mask].copy()
 if fdf.empty:
