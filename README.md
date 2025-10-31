@@ -42,6 +42,7 @@ chavost/
 ├── data/
 │   └── base_cryptee.csv        # Jeu de données principal (CSV chiffré)
 ├── src/
+│   ├── main.py                 # Point d'entrée principal
 │   ├── interface/              # Interface Streamlit principale
 │   │   └── app.py
 │   ├── tests/                  # Tests unitaires
@@ -50,7 +51,6 @@ chavost/
 │       ├── __init__.py
 │       ├── aliases.py
 │       ├── fichier_R_2_engineer.R
-│       └── main.py
 ├── .gitlab-ci.yml              # Pipeline CI/CD GitLab
 ├── .pre-commit-config.yaml     # Configuration du pré-commit
 ├── .python-version             # Version Python utilisée
