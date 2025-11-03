@@ -67,6 +67,7 @@ def fmt_int(x: float | int) -> str:
 
 # --- Schema coercion & validation used for both loading and uploading
 
+
 def _coerce_and_validate(df: pd.DataFrame) -> pd.DataFrame:
     """Normalise, valide le schéma, et crée les champs dérivés.
     Retourne un DataFrame prêt pour l'application.
@@ -191,9 +192,12 @@ def get_data() -> pd.DataFrame:
         raise FileNotFoundError(f"CSV introuvable : {DATA_PATH}")
     df = load_csv_safely(DATA_PATH)
     return _coerce_and_validate(df)
+
+
 # ----------------------------- UI Blocks ------------------------------------
 
 # ------------------------- First-run dataset import --------------------------
+
 
 def render_first_run_setup() -> None:
     st.title("🔐 Configuration initiale — Importer votre base")
@@ -205,7 +209,9 @@ def render_first_run_setup() -> None:
         **Colonnes requises** : `annee`, `type_produit`, `nom_produit`, `quantite`, `prix`, `vecteur_id`, `country`.
         """
     )
-    up = st.file_uploader("Choisissez votre CSV confidentiel", type=["csv"], accept_multiple_files=False)
+    up = st.file_uploader(
+        "Choisissez votre CSV confidentiel", type=["csv"], accept_multiple_files=False
+    )
     if up is None:
         st.info("Aucun fichier sélectionné pour l'instant.")
         return
@@ -999,8 +1005,12 @@ def render_tools(df: pd.DataFrame, active_tool: str):
             "🧩 **Gestion de la base de données** — visualisez, éditez, exportez, supprimez des lignes, rechargez la base."
         )
         st.subheader("Importer / remplacer la base (CSV)")
-        up_replace = st.file_uploader("Nouveau CSV (remplace la base courante)", type=["csv"], key="replace_csv")
-        if up_replace is not None and st.button("Remplacer la base par ce fichier", key="btn_replace_csv"):
+        up_replace = st.file_uploader(
+            "Nouveau CSV (remplace la base courante)", type=["csv"], key="replace_csv"
+        )
+        if up_replace is not None and st.button(
+            "Remplacer la base par ce fichier", key="btn_replace_csv"
+        ):
             try:
                 new_df = load_csv_safely(up_replace)
                 new_df = _coerce_and_validate(new_df)
