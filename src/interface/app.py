@@ -1085,8 +1085,10 @@ def render_tools(df: pd.DataFrame, active_tool: str):
 # ----------------------------- Main -----------------------------------------
 def main() -> None:
     # Autoriser l'accès si une base est en mémoire OU si un CSV existe sur disque (mode dev).
-    has_runtime = isinstance(st.session_state.get(RUNTIME_KEY), pd.DataFrame) \
-                  and not st.session_state[RUNTIME_KEY].empty
+    has_runtime = (
+        isinstance(st.session_state.get(RUNTIME_KEY), pd.DataFrame)
+        and not st.session_state[RUNTIME_KEY].empty
+    )
 
     if not has_runtime and not DATA_PATH.exists():
         render_first_run_setup()
