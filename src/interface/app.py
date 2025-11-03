@@ -51,7 +51,9 @@ px.defaults.template = "plotly_white"
 BRAND_COLORS = px.colors.qualitative.Set2
 
 # ----------------------------- Constants ------------------------------------
-DATA_PATH = Path(__file__).parents[2] / "data" / "base_cryptee.csv"
+DATA_DIR = Path(__file__).parents[2] / "data"
+DATA_PATH = DATA_DIR / "base_cryptee.csv"
+RUNTIME_KEY = "runtime_df"
 
 # ----------------------------- Helpers --------------------------------------
 
@@ -62,6 +64,48 @@ def fmt_int(x: float | int) -> str:
         return f"{int(x):,}".replace(",", " ")
     except Exception:
         return "—"
+
+
+# --- Schema coercion & validation used for both loading and uploading
+
+
+def _coerce_and_validate(df: pd.DataFrame) -> pd.DataFrame:
+    """Normalise, valide le schéma, et crée les champs dérivés.
+    Retourne un DataFrame prêt pour l'application.
+    """
+    # Normalisation des colonnes et schéma attendu
+    df.columns = [c.strip().lower() for c in df.columns]
+    expected = [
+        "annee",
+        "type_produit",
+        "nom_produit",
+        "quantite",
+        "prix",
+        "vecteur_id",
+        "country",
+    ]
+    missing = [c for c in expected if c not in df.columns]
+    if missing:
+        raise ValueError(f"Colonnes manquantes dans le CSV : {missing}")
+
+    df["annee"] = pd.to_numeric(df["annee"], errors="coerce").astype("Int64")
+    df["quantite"] = pd.to_numeric(df["quantite"], errors="coerce")
+    df["prix"] = pd.to_numeric(df["prix"], errors="coerce")
+    df["type_produit"] = df["type_produit"].astype(str)
+    df["nom_produit"] = df["nom_produit"].astype(str)
+    df["vecteur_id"] = df["vecteur_id"].astype(str)
+    df["country"] = df["country"].astype(str)
+
+    df = df.dropna(subset=["annee", "quantite", "prix"]).copy()
+
+    # Champs dérivés
+    df["annee_str"] = df["annee"].astype("Int64").astype(str)
+    if "client_name" in df.columns:
+        df["client"] = df["client_name"].astype(str)
+    else:
+        df["client"] = df["vecteur_id"]
+    df["prix_total"] = df["prix"]  # métrique métier = prix total
+    return df
 
 
 # --- Client resolver (id or name -> vecteur_id, display name)
@@ -144,44 +188,61 @@ def load_csv_safely(path_or_buf: Any) -> pd.DataFrame:
 
 @st.cache_data(show_spinner=False)
 def get_data() -> pd.DataFrame:
-    """Load, validate, and coerce the base dataset."""
-    if not DATA_PATH.exists():
-        raise FileNotFoundError(f"CSV introuvable : {DATA_PATH}")
-    df = load_csv_safely(DATA_PATH)
+    """Load, validate, and coerce the base dataset.
+    Priority: in-memory session state -> legacy CSV on disk -> error.
+    """
+    # 1) Session state takes precedence (no persistence to disk for confidentiality)
+    runtime_df = st.session_state.get(RUNTIME_KEY)
+    if isinstance(runtime_df, pd.DataFrame) and not runtime_df.empty:
+        return _coerce_and_validate(runtime_df.copy())
 
-    # Normalize columns and enforce schema
-    df.columns = [c.strip().lower() for c in df.columns]
-    expected = [
-        "annee",
-        "type_produit",
-        "nom_produit",
-        "quantite",
-        "prix",
-        "vecteur_id",
-        "country",
-    ]
-    missing = [c for c in expected if c not in df.columns]
-    if missing:
-        raise ValueError(f"Colonnes manquantes dans le CSV : {missing}")
+    # 2) Legacy fallback: if a CSV exists (e.g., local dev), allow reading it
+    if DATA_PATH.exists():
+        df = load_csv_safely(DATA_PATH)
+        return _coerce_and_validate(df)
 
-    df["annee"] = pd.to_numeric(df["annee"], errors="coerce").astype("Int64")
-    df["quantite"] = pd.to_numeric(df["quantite"], errors="coerce")
-    df["prix"] = pd.to_numeric(df["prix"], errors="coerce")
-    df["type_produit"] = df["type_produit"].astype(str)
-    df["nom_produit"] = df["nom_produit"].astype(str)
-    df["vecteur_id"] = df["vecteur_id"].astype(str)
-    df["country"] = df["country"].astype(str)
+    # 3) Otherwise, no data yet
+    raise FileNotFoundError(
+        "Aucune base chargée. Importez un CSV confidentiel pour démarrer."
+    )
 
-    df = df.dropna(subset=["annee", "quantite", "prix"]).copy()
-    # Derived fields
-    df["annee_str"] = df["annee"].astype("Int64").astype(str)
-    # Use client_name if present, else vecteur_id (for migration compatibility)
-    if "client_name" in df.columns:
-        df["client"] = df["client_name"].astype(str)
-    else:
-        df["client"] = df["vecteur_id"]
-    df["prix_total"] = df["prix"]  # business metric = prix total
-    return df
+
+# ----------------------------- UI Blocks ------------------------------------
+
+# ------------------------- First-run dataset import --------------------------
+
+
+def render_first_run_setup() -> None:
+    st.title("🔐 Configuration initiale — Importer votre base")
+    st.markdown(
+        """
+        Cette application ne contient **aucune donnée** dans le dépôt Git.
+        Pour l'utiliser, importez ici votre fichier **CSV** conforme au schéma attendu.
+
+        **Colonnes requises** : `annee`, `type_produit`, `nom_produit`, `quantite`, `prix`, `vecteur_id`, `country`.
+        """
+    )
+    up = st.file_uploader(
+        "Choisissez votre CSV confidentiel", type=["csv"], accept_multiple_files=False
+    )
+    if up is None:
+        st.info("Aucun fichier sélectionné pour l'instant.")
+        return
+
+    try:
+        df = load_csv_safely(up)
+        df = _coerce_and_validate(df)
+        # Confidential mode: keep in memory only, do NOT write to disk
+        st.session_state[RUNTIME_KEY] = df
+        st.success(
+            "Base importée en mémoire (non enregistrée sur le serveur). Rechargement…"
+        )
+        st.cache_data.clear()
+        st.rerun()
+    except Exception as e:
+        st.error(f"Fichier invalide ou non conforme : {e}")
+        with st.expander("Voir un extrait de l'erreur"):
+            st.exception(e)
 
 
 # ----------------------------- UI Blocks ------------------------------------
@@ -315,7 +376,7 @@ def render_onboarding() -> None:
 **Objectif.** Explorer rapidement les ventes par année, type de produit, client et produit.
 
 **Étapes :**
-1. Le jeu de données est fixe et chargé automatiquement (`data/base_cryptee.csv`).
+1. Les données sont **chargées en mémoire** depuis un CSV importé par l'entreprise (confidentialité). Aucune sauvegarde automatique n'est faite côté serveur. Si aucun CSV n'est encore chargé, utilisez l'écran d'**import initial** ou **Outils → Gestion base**.
 2. Filtrez par **Années**, **Types de produit**, **Clients (n°)** et recherchez un **produit**.
 3. Parcourez les onglets : *Vue d’ensemble*, *Évolution*, *Types & clients*, *Produits*, *Carte export*, *Analyse des prix*, *Table / Export*.
 
@@ -898,15 +959,13 @@ def render_tools(df: pd.DataFrame, active_tool: str):
 
         save = st.button("Enregistrer les lignes visibles", type="primary")
         if save:
-            # Charger la base existante et normaliser les colonnes
             try:
-                base_df = load_csv_safely(DATA_PATH)
+                base_df = get_data().copy()
                 base_df.columns = [c.strip().lower() for c in base_df.columns]
                 has_client_name_col = "client_name" in base_df.columns
 
                 rows_to_add = []
                 for _, r in edited.iterrows():
-                    # Ne conserver que les lignes réellement saisies (nom_produit non vide)
                     if (
                         str(r.get("nom_produit", "")).strip() == ""
                         and float(r.get("quantite", 0) or 0) == 0
@@ -926,7 +985,6 @@ def render_tools(df: pd.DataFrame, active_tool: str):
                     }
                     if has_client_name_col:
                         new_row["client_name"] = str(r.get("client_input", "")).strip()
-                    # Validation minimale
                     for c in [
                         "annee",
                         "type_produit",
@@ -943,22 +1001,47 @@ def render_tools(df: pd.DataFrame, active_tool: str):
                     st.warning("Aucune ligne à enregistrer.")
                     return
 
-                base_df = pd.concat(
+                updated = pd.concat(
                     [base_df, pd.DataFrame(rows_to_add)], ignore_index=True
                 )
-                base_df.to_csv(DATA_PATH, index=False)
-                st.success(
-                    f"{len(rows_to_add)} ligne(s) ajoutée(s) et sauvegardée(s) avec succès."
-                )
+                # Apply in memory only (confidential mode)
+                st.session_state[RUNTIME_KEY] = _coerce_and_validate(updated)
                 st.cache_data.clear()
+                st.success(f"{len(rows_to_add)} ligne(s) ajoutée(s) en mémoire.")
+
+                # Offer a download of the updated base (optional)
+                buf2 = io.StringIO()
+                st.session_state[RUNTIME_KEY].to_csv(buf2, index=False)
+                st.download_button(
+                    "Télécharger la base mise à jour (CSV)",
+                    buf2.getvalue(),
+                    file_name="base_mise_a_jour.csv",
+                    mime="text/csv",
+                )
             except Exception as e:
-                st.error(f"Échec de l'enregistrement : {e}")
+                st.error(f"Échec de l'enregistrement en mémoire : {e}")
 
     def tool_base():
         st.markdown(
             "🧩 **Gestion de la base de données** — visualisez, éditez, exportez, supprimez des lignes, rechargez la base."
         )
-        base_df = load_csv_safely(DATA_PATH)
+        st.subheader("Importer / remplacer la base (CSV)")
+        up_replace = st.file_uploader(
+            "Nouveau CSV (remplace la base courante)", type=["csv"], key="replace_csv"
+        )
+        if up_replace is not None and st.button(
+            "Charger ce fichier en mémoire", key="btn_replace_csv"
+        ):
+            try:
+                new_df = load_csv_safely(up_replace)
+                new_df = _coerce_and_validate(new_df)
+                st.session_state[RUNTIME_KEY] = new_df
+                st.success("Base chargée en mémoire (non enregistrée sur le serveur).")
+                st.cache_data.clear()
+                st.rerun()
+            except Exception as e:
+                st.error(f"Échec du chargement : {e}")
+        base_df = get_data().copy()
         base_df.columns = [c.strip().lower() for c in base_df.columns]
         edited = st.data_editor(
             base_df,
@@ -973,6 +1056,14 @@ def render_tools(df: pd.DataFrame, active_tool: str):
         c1.download_button(
             "Exporter CSV", buf.getvalue(), file_name="base_ventes.csv", mime="text/csv"
         )
+        apply_mem = st.button("Appliquer les modifications en mémoire", key="apply_mem")
+        if apply_mem:
+            try:
+                st.session_state[RUNTIME_KEY] = _coerce_and_validate(edited.copy())
+                st.success("Modifications appliquées en mémoire.")
+                st.cache_data.clear()
+            except Exception as e:
+                st.error(f"Impossible d'appliquer les modifications : {e}")
         delete_rows = c2.button("Supprimer lignes sélectionnées")
         refresh_btn = c3.button("Rafraîchir le cache")
         if delete_rows:
@@ -993,6 +1084,11 @@ def render_tools(df: pd.DataFrame, active_tool: str):
 
 # ----------------------------- Main -----------------------------------------
 def main() -> None:
+    # Si la base n'existe pas (dépôt confidentiel sans données), proposer l'import initial
+    if not DATA_PATH.exists():
+        render_first_run_setup()
+        return
+
     try:
         df = get_data()
     except Exception as e:
