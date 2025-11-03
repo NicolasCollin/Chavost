@@ -1084,8 +1084,11 @@ def render_tools(df: pd.DataFrame, active_tool: str):
 
 # ----------------------------- Main -----------------------------------------
 def main() -> None:
-    # Si la base n'existe pas (dépôt confidentiel sans données), proposer l'import initial
-    if not DATA_PATH.exists():
+    # Autoriser l'accès si une base est en mémoire OU si un CSV existe sur disque (mode dev).
+    has_runtime = isinstance(st.session_state.get(RUNTIME_KEY), pd.DataFrame) \
+                  and not st.session_state[RUNTIME_KEY].empty
+
+    if not has_runtime and not DATA_PATH.exists():
         render_first_run_setup()
         return
 
