@@ -53,6 +53,7 @@ BRAND_COLORS = px.colors.qualitative.Set2
 # ----------------------------- Constants ------------------------------------
 DATA_DIR = Path(__file__).parents[2] / "data"
 DATA_PATH = DATA_DIR / "base_cryptee.csv"
+RUNTIME_KEY = "runtime_df"
 
 # ----------------------------- Helpers --------------------------------------
 
@@ -187,11 +188,23 @@ def load_csv_safely(path_or_buf: Any) -> pd.DataFrame:
 
 @st.cache_data(show_spinner=False)
 def get_data() -> pd.DataFrame:
-    """Load, validate, and coerce the base dataset."""
-    if not DATA_PATH.exists():
-        raise FileNotFoundError(f"CSV introuvable : {DATA_PATH}")
-    df = load_csv_safely(DATA_PATH)
-    return _coerce_and_validate(df)
+    """Load, validate, and coerce the base dataset.
+    Priority: in-memory session state -> legacy CSV on disk -> error.
+    """
+    # 1) Session state takes precedence (no persistence to disk for confidentiality)
+    runtime_df = st.session_state.get(RUNTIME_KEY)
+    if isinstance(runtime_df, pd.DataFrame) and not runtime_df.empty:
+        return _coerce_and_validate(runtime_df.copy())
+
+    # 2) Legacy fallback: if a CSV exists (e.g., local dev), allow reading it
+    if DATA_PATH.exists():
+        df = load_csv_safely(DATA_PATH)
+        return _coerce_and_validate(df)
+
+    # 3) Otherwise, no data yet
+    raise FileNotFoundError(
+        "Aucune base chargée. Importez un CSV confidentiel pour démarrer."
+    )
 
 
 # ----------------------------- UI Blocks ------------------------------------
@@ -219,9 +232,11 @@ def render_first_run_setup() -> None:
     try:
         df = load_csv_safely(up)
         df = _coerce_and_validate(df)
-        DATA_PATH.parent.mkdir(parents=True, exist_ok=True)
-        df.to_csv(DATA_PATH, index=False)
-        st.success("Base importée et enregistrée avec succès. Rechargement…")
+        # Confidential mode: keep in memory only, do NOT write to disk
+        st.session_state[RUNTIME_KEY] = df
+        st.success(
+            "Base importée en mémoire (non enregistrée sur le serveur). Rechargement…"
+        )
         st.cache_data.clear()
         st.rerun()
     except Exception as e:
@@ -361,7 +376,7 @@ def render_onboarding() -> None:
 **Objectif.** Explorer rapidement les ventes par année, type de produit, client et produit.
 
 **Étapes :**
-1. Le jeu de données est chargé depuis `data/base_cryptee.csv`. Si le fichier est absent (appli publique/confidentielle), **importez votre CSV** via l'écran de configuration initiale ou via **Outils → Gestion base**.
+1. Les données sont **chargées en mémoire** depuis un CSV importé par l'entreprise (confidentialité). Aucune sauvegarde automatique n'est faite côté serveur. Si aucun CSV n'est encore chargé, utilisez l'écran d'**import initial** ou **Outils → Gestion base**.
 2. Filtrez par **Années**, **Types de produit**, **Clients (n°)** et recherchez un **produit**.
 3. Parcourez les onglets : *Vue d’ensemble*, *Évolution*, *Types & clients*, *Produits*, *Carte export*, *Analyse des prix*, *Table / Export*.
 
@@ -944,15 +959,13 @@ def render_tools(df: pd.DataFrame, active_tool: str):
 
         save = st.button("Enregistrer les lignes visibles", type="primary")
         if save:
-            # Charger la base existante et normaliser les colonnes
             try:
-                base_df = load_csv_safely(DATA_PATH)
+                base_df = get_data().copy()
                 base_df.columns = [c.strip().lower() for c in base_df.columns]
                 has_client_name_col = "client_name" in base_df.columns
 
                 rows_to_add = []
                 for _, r in edited.iterrows():
-                    # Ne conserver que les lignes réellement saisies (nom_produit non vide)
                     if (
                         str(r.get("nom_produit", "")).strip() == ""
                         and float(r.get("quantite", 0) or 0) == 0
@@ -972,7 +985,6 @@ def render_tools(df: pd.DataFrame, active_tool: str):
                     }
                     if has_client_name_col:
                         new_row["client_name"] = str(r.get("client_input", "")).strip()
-                    # Validation minimale
                     for c in [
                         "annee",
                         "type_produit",
@@ -989,16 +1001,25 @@ def render_tools(df: pd.DataFrame, active_tool: str):
                     st.warning("Aucune ligne à enregistrer.")
                     return
 
-                base_df = pd.concat(
+                updated = pd.concat(
                     [base_df, pd.DataFrame(rows_to_add)], ignore_index=True
                 )
-                base_df.to_csv(DATA_PATH, index=False)
-                st.success(
-                    f"{len(rows_to_add)} ligne(s) ajoutée(s) et sauvegardée(s) avec succès."
-                )
+                # Apply in memory only (confidential mode)
+                st.session_state[RUNTIME_KEY] = _coerce_and_validate(updated)
                 st.cache_data.clear()
+                st.success(f"{len(rows_to_add)} ligne(s) ajoutée(s) en mémoire.")
+
+                # Offer a download of the updated base (optional)
+                buf2 = io.StringIO()
+                st.session_state[RUNTIME_KEY].to_csv(buf2, index=False)
+                st.download_button(
+                    "Télécharger la base mise à jour (CSV)",
+                    buf2.getvalue(),
+                    file_name="base_mise_a_jour.csv",
+                    mime="text/csv",
+                )
             except Exception as e:
-                st.error(f"Échec de l'enregistrement : {e}")
+                st.error(f"Échec de l'enregistrement en mémoire : {e}")
 
     def tool_base():
         st.markdown(
@@ -1009,19 +1030,18 @@ def render_tools(df: pd.DataFrame, active_tool: str):
             "Nouveau CSV (remplace la base courante)", type=["csv"], key="replace_csv"
         )
         if up_replace is not None and st.button(
-            "Remplacer la base par ce fichier", key="btn_replace_csv"
+            "Charger ce fichier en mémoire", key="btn_replace_csv"
         ):
             try:
                 new_df = load_csv_safely(up_replace)
                 new_df = _coerce_and_validate(new_df)
-                DATA_PATH.parent.mkdir(parents=True, exist_ok=True)
-                new_df.to_csv(DATA_PATH, index=False)
-                st.success("Base remplacée avec succès.")
+                st.session_state[RUNTIME_KEY] = new_df
+                st.success("Base chargée en mémoire (non enregistrée sur le serveur).")
                 st.cache_data.clear()
                 st.rerun()
             except Exception as e:
-                st.error(f"Échec du remplacement : {e}")
-        base_df = load_csv_safely(DATA_PATH)
+                st.error(f"Échec du chargement : {e}")
+        base_df = get_data().copy()
         base_df.columns = [c.strip().lower() for c in base_df.columns]
         edited = st.data_editor(
             base_df,
@@ -1036,6 +1056,14 @@ def render_tools(df: pd.DataFrame, active_tool: str):
         c1.download_button(
             "Exporter CSV", buf.getvalue(), file_name="base_ventes.csv", mime="text/csv"
         )
+        apply_mem = st.button("Appliquer les modifications en mémoire", key="apply_mem")
+        if apply_mem:
+            try:
+                st.session_state[RUNTIME_KEY] = _coerce_and_validate(edited.copy())
+                st.success("Modifications appliquées en mémoire.")
+                st.cache_data.clear()
+            except Exception as e:
+                st.error(f"Impossible d'appliquer les modifications : {e}")
         delete_rows = c2.button("Supprimer lignes sélectionnées")
         refresh_btn = c3.button("Rafraîchir le cache")
         if delete_rows:
