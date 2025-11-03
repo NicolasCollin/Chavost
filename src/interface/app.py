@@ -51,7 +51,8 @@ px.defaults.template = "plotly_white"
 BRAND_COLORS = px.colors.qualitative.Set2
 
 # ----------------------------- Constants ------------------------------------
-DATA_PATH = Path(__file__).parents[2] / "data" / "base_cryptee.csv"
+DATA_DIR = Path(__file__).parents[2] / "data"
+DATA_PATH = DATA_DIR / "base_cryptee.csv"
 
 # ----------------------------- Helpers --------------------------------------
 
@@ -62,6 +63,47 @@ def fmt_int(x: float | int) -> str:
         return f"{int(x):,}".replace(",", " ")
     except Exception:
         return "—"
+
+
+# --- Schema coercion & validation used for both loading and uploading
+
+def _coerce_and_validate(df: pd.DataFrame) -> pd.DataFrame:
+    """Normalise, valide le schéma, et crée les champs dérivés.
+    Retourne un DataFrame prêt pour l'application.
+    """
+    # Normalisation des colonnes et schéma attendu
+    df.columns = [c.strip().lower() for c in df.columns]
+    expected = [
+        "annee",
+        "type_produit",
+        "nom_produit",
+        "quantite",
+        "prix",
+        "vecteur_id",
+        "country",
+    ]
+    missing = [c for c in expected if c not in df.columns]
+    if missing:
+        raise ValueError(f"Colonnes manquantes dans le CSV : {missing}")
+
+    df["annee"] = pd.to_numeric(df["annee"], errors="coerce").astype("Int64")
+    df["quantite"] = pd.to_numeric(df["quantite"], errors="coerce")
+    df["prix"] = pd.to_numeric(df["prix"], errors="coerce")
+    df["type_produit"] = df["type_produit"].astype(str)
+    df["nom_produit"] = df["nom_produit"].astype(str)
+    df["vecteur_id"] = df["vecteur_id"].astype(str)
+    df["country"] = df["country"].astype(str)
+
+    df = df.dropna(subset=["annee", "quantite", "prix"]).copy()
+
+    # Champs dérivés
+    df["annee_str"] = df["annee"].astype("Int64").astype(str)
+    if "client_name" in df.columns:
+        df["client"] = df["client_name"].astype(str)
+    else:
+        df["client"] = df["vecteur_id"]
+    df["prix_total"] = df["prix"]  # métrique métier = prix total
+    return df
 
 
 # --- Client resolver (id or name -> vecteur_id, display name)
@@ -148,40 +190,38 @@ def get_data() -> pd.DataFrame:
     if not DATA_PATH.exists():
         raise FileNotFoundError(f"CSV introuvable : {DATA_PATH}")
     df = load_csv_safely(DATA_PATH)
+    return _coerce_and_validate(df)
+# ----------------------------- UI Blocks ------------------------------------
 
-    # Normalize columns and enforce schema
-    df.columns = [c.strip().lower() for c in df.columns]
-    expected = [
-        "annee",
-        "type_produit",
-        "nom_produit",
-        "quantite",
-        "prix",
-        "vecteur_id",
-        "country",
-    ]
-    missing = [c for c in expected if c not in df.columns]
-    if missing:
-        raise ValueError(f"Colonnes manquantes dans le CSV : {missing}")
+# ------------------------- First-run dataset import --------------------------
 
-    df["annee"] = pd.to_numeric(df["annee"], errors="coerce").astype("Int64")
-    df["quantite"] = pd.to_numeric(df["quantite"], errors="coerce")
-    df["prix"] = pd.to_numeric(df["prix"], errors="coerce")
-    df["type_produit"] = df["type_produit"].astype(str)
-    df["nom_produit"] = df["nom_produit"].astype(str)
-    df["vecteur_id"] = df["vecteur_id"].astype(str)
-    df["country"] = df["country"].astype(str)
+def render_first_run_setup() -> None:
+    st.title("🔐 Configuration initiale — Importer votre base")
+    st.markdown(
+        """
+        Cette application ne contient **aucune donnée** dans le dépôt Git.
+        Pour l'utiliser, importez ici votre fichier **CSV** conforme au schéma attendu.
 
-    df = df.dropna(subset=["annee", "quantite", "prix"]).copy()
-    # Derived fields
-    df["annee_str"] = df["annee"].astype("Int64").astype(str)
-    # Use client_name if present, else vecteur_id (for migration compatibility)
-    if "client_name" in df.columns:
-        df["client"] = df["client_name"].astype(str)
-    else:
-        df["client"] = df["vecteur_id"]
-    df["prix_total"] = df["prix"]  # business metric = prix total
-    return df
+        **Colonnes requises** : `annee`, `type_produit`, `nom_produit`, `quantite`, `prix`, `vecteur_id`, `country`.
+        """
+    )
+    up = st.file_uploader("Choisissez votre CSV confidentiel", type=["csv"], accept_multiple_files=False)
+    if up is None:
+        st.info("Aucun fichier sélectionné pour l'instant.")
+        return
+
+    try:
+        df = load_csv_safely(up)
+        df = _coerce_and_validate(df)
+        DATA_PATH.parent.mkdir(parents=True, exist_ok=True)
+        df.to_csv(DATA_PATH, index=False)
+        st.success("Base importée et enregistrée avec succès. Rechargement…")
+        st.cache_data.clear()
+        st.rerun()
+    except Exception as e:
+        st.error(f"Fichier invalide ou non conforme : {e}")
+        with st.expander("Voir un extrait de l'erreur"):
+            st.exception(e)
 
 
 # ----------------------------- UI Blocks ------------------------------------
@@ -315,7 +355,7 @@ def render_onboarding() -> None:
 **Objectif.** Explorer rapidement les ventes par année, type de produit, client et produit.
 
 **Étapes :**
-1. Le jeu de données est fixe et chargé automatiquement (`data/base_cryptee.csv`).
+1. Le jeu de données est chargé depuis `data/base_cryptee.csv`. Si le fichier est absent (appli publique/confidentielle), **importez votre CSV** via l'écran de configuration initiale ou via **Outils → Gestion base**.
 2. Filtrez par **Années**, **Types de produit**, **Clients (n°)** et recherchez un **produit**.
 3. Parcourez les onglets : *Vue d’ensemble*, *Évolution*, *Types & clients*, *Produits*, *Carte export*, *Analyse des prix*, *Table / Export*.
 
@@ -958,6 +998,19 @@ def render_tools(df: pd.DataFrame, active_tool: str):
         st.markdown(
             "🧩 **Gestion de la base de données** — visualisez, éditez, exportez, supprimez des lignes, rechargez la base."
         )
+        st.subheader("Importer / remplacer la base (CSV)")
+        up_replace = st.file_uploader("Nouveau CSV (remplace la base courante)", type=["csv"], key="replace_csv")
+        if up_replace is not None and st.button("Remplacer la base par ce fichier", key="btn_replace_csv"):
+            try:
+                new_df = load_csv_safely(up_replace)
+                new_df = _coerce_and_validate(new_df)
+                DATA_PATH.parent.mkdir(parents=True, exist_ok=True)
+                new_df.to_csv(DATA_PATH, index=False)
+                st.success("Base remplacée avec succès.")
+                st.cache_data.clear()
+                st.rerun()
+            except Exception as e:
+                st.error(f"Échec du remplacement : {e}")
         base_df = load_csv_safely(DATA_PATH)
         base_df.columns = [c.strip().lower() for c in base_df.columns]
         edited = st.data_editor(
@@ -993,6 +1046,11 @@ def render_tools(df: pd.DataFrame, active_tool: str):
 
 # ----------------------------- Main -----------------------------------------
 def main() -> None:
+    # Si la base n'existe pas (dépôt confidentiel sans données), proposer l'import initial
+    if not DATA_PATH.exists():
+        render_first_run_setup()
+        return
+
     try:
         df = get_data()
     except Exception as e:
