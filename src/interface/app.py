@@ -1,15 +1,19 @@
-# =============================================================================
-# Chavost Dashboard — Streamlit App (clean architecture)
-# =============================================================================
+"""Chavost Dashboard — Streamlit App with simple auth gate.
+This module defines the Streamlit UI and a minimal in-app authentication.
+"""
+
+import io
 from pathlib import Path
 from typing import Any
-import io
+
 import numpy as np
 import pandas as pd
 import plotly.express as px
 import streamlit as st
 
-# ----------------------------- Page / Theme ---------------------------------
+# =============================================================================
+# Page metadata / Theme
+# =============================================================================
 st.set_page_config(page_title="Chavost — Tableau de bord", layout="wide")
 st.markdown(
     """
@@ -49,6 +53,73 @@ st.markdown(
 )
 px.defaults.template = "plotly_white"
 BRAND_COLORS = px.colors.qualitative.Set2
+
+# ----------------------------- Simple Auth ----------------------------------
+
+
+def auth_gate() -> bool:
+    """Very simple in-app authentication.
+    Current credentials: login = "admin", password = "admin".
+    Stores state in st.session_state['auth_ok'].
+    """
+    if "auth_ok" not in st.session_state:
+        st.session_state["auth_ok"] = False
+
+    # Already authenticated
+    if st.session_state["auth_ok"]:
+        # Sidebar logout
+        with st.sidebar:
+            st.markdown(
+                "<div class='sidebar-title'>👤 Session</div>", unsafe_allow_html=True
+            )
+            if st.button("Se déconnecter", use_container_width=True):
+                st.session_state["auth_ok"] = False
+                # Scrub any runtime data on logout for confidentiality
+                st.session_state.pop(RUNTIME_KEY, None)
+                st.cache_data.clear()
+                st.rerun()
+        return True
+
+    # Login form (centered)
+    st.title("🔐 Connexion requise")
+    st.write("Cette application est privée. Veuillez vous authentifier pour continuer.")
+    with st.form("login_form", clear_on_submit=False):
+        user = st.text_input("Identifiant", value="", placeholder="")
+        pwd = st.text_input("Mot de passe", type="password", value="")
+        submitted = st.form_submit_button("Se connecter")
+        if submitted:
+            if user == "admin" and pwd == "admin":
+                st.session_state["auth_ok"] = True
+                st.success("Connexion réussie. Redirection…")
+                st.rerun()
+            else:
+                st.error("Identifiants invalides. Essayez à nouveau.")
+
+    st.caption(
+        "Astuce : les identifiants par défaut sont *admin / admin*. Pensez à les changer rapidement."
+    )
+    return False
+
+    # Login form (centered)
+    st.title("🔐 Connexion requise")
+    st.write("Cette application est privée. Veuillez vous authentifier pour continuer.")
+    with st.form("login_form", clear_on_submit=False):
+        user = st.text_input("Identifiant", value="", placeholder="admin")
+        pwd = st.text_input("Mot de passe", type="password", value="")
+        submitted = st.form_submit_button("Se connecter")
+        if submitted:
+            if user == "admin" and pwd == "admin":
+                st.session_state["auth_ok"] = True
+                st.success("Connexion réussie. Redirection…")
+                st.rerun()
+            else:
+                st.error("Identifiants invalides. Essayez à nouveau.")
+
+    st.caption(
+        "Astuce : les identifiants par défaut sont *admin / admin*. Pensez à les changer rapidement."
+    )
+    return False
+
 
 # ----------------------------- Constants ------------------------------------
 DATA_DIR = Path(__file__).parents[2] / "data"
@@ -1084,6 +1155,10 @@ def render_tools(df: pd.DataFrame, active_tool: str):
 
 # ----------------------------- Main -----------------------------------------
 def main() -> None:
+    # ---- AUTH FIRST ----
+    if not auth_gate():
+        return
+
     # Autoriser l'accès si une base est en mémoire OU si un CSV existe sur disque (mode dev).
     has_runtime = (
         isinstance(st.session_state.get(RUNTIME_KEY), pd.DataFrame)
