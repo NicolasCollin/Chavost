@@ -822,13 +822,12 @@ def render_tools(df: pd.DataFrame, active_tool: str):
 
         # --- Historique & KPIs (filter by vecteur_id ONLY) ---
         sdf = df.loc[df["vecteur_id"].astype(str) == str(vid)].copy()
-        
+
         if sdf.empty:
             st.info(
                 "Aucun historique pour ce client. Vous pouvez **ajouter une vente** ci‑dessous."
             )
             return
-        
 
         display_name = label if label and label.strip() else str(vid)
         st.success(f"Client reconnu : **{display_name}** (vecteur_id = {vid})")
