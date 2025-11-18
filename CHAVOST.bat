@@ -86,7 +86,7 @@ echo.
 REM -------------------------------------------------------------------------
 REM 2) Choisir dossier installation
 REM -------------------------------------------------------------------------
-set /p INSTALL_DIR="Chemin d'installation (ex: C:\Users\Nicolas\Documents) : "
+set /p INSTALL_DIR="Chemin d'installation (ex: C:\Users\utilisateur\Documents) : "
 
 if "%INSTALL_DIR%"=="" (
     echo Aucun chemin saisi. Abandon.
@@ -157,7 +157,7 @@ set "DESKTOP_DIR=%USERPROFILE%\Desktop"
 if not exist "%DESKTOP_DIR%" set "DESKTOP_DIR=%USERPROFILE%\Bureau"
 
 set "SHORTCUT_PATH=%DESKTOP_DIR%\Chavost.lnk"
-set "ICON_PATH=%TARGET_DIR%\image\logo.jpg"
+set "ICON_PATH=%TARGET_DIR%\image\logo.ico"
 
 powershell -command ^
 "$s = (New-Object -COM WScript.Shell).CreateShortcut('%SHORTCUT_PATH%');" ^
