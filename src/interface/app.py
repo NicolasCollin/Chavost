@@ -11,6 +11,8 @@ import pandas as pd
 import plotly.express as px
 import streamlit as st
 
+from src.utils.main_engineering import check_data
+
 # =============================================================================
 # Page metadata / Theme
 # =============================================================================
@@ -282,38 +284,8 @@ def get_data() -> pd.DataFrame:
 
 # ------------------------- First-run dataset import --------------------------
 
-
-def render_first_run_setup() -> None:
-    st.title("🔐 Configuration initiale — Importer votre base")
-    st.markdown(
-        """
-        Cette application ne contient **aucune donnée** dans le dépôt Git.
-        Pour l'utiliser, importez ici votre fichier **CSV** conforme au schéma attendu.
-
-        **Colonnes requises** : `annee`, `type_produit`, `nom_produit`, `quantite`, `prix`, `vecteur_id`, `country`.
-        """
-    )
-    up = st.file_uploader(
-        "Choisissez votre CSV confidentiel", type=["csv"], accept_multiple_files=False
-    )
-    if up is None:
-        st.info("Aucun fichier sélectionné pour l'instant.")
-        return
-
-    try:
-        df = load_csv_safely(up)
-        df = _coerce_and_validate(df)
-        # Confidential mode: keep in memory only, do NOT write to disk
-        st.session_state[RUNTIME_KEY] = df
-        st.success(
-            "Base importée en mémoire (non enregistrée sur le serveur). Rechargement…"
-        )
-        st.cache_data.clear()
-        st.rerun()
-    except Exception as e:
-        st.error(f"Fichier invalide ou non conforme : {e}")
-        with st.expander("Voir un extrait de l'erreur"):
-            st.exception(e)
+#/J'ai réussi à créer ma nouvelle fonction qui charge les données si la personne 
+# possède les fichier sur son ordinateurs ,la prochaine étape sera de modifier l'intégralité du site lol./#
 
 
 # ----------------------------- UI Blocks ------------------------------------
@@ -1160,21 +1132,9 @@ def main() -> None:
     if not auth_gate():
         return
 
-    # Autoriser l'accès si une base est en mémoire OU si un CSV existe sur disque (mode dev).
-    has_runtime = (
-        isinstance(st.session_state.get(RUNTIME_KEY), pd.DataFrame)
-        and not st.session_state[RUNTIME_KEY].empty
-    )
+    #vérification si l'utilisateur possède les bases de données requises
+    check_data()
 
-    if not has_runtime and not DATA_PATH.exists():
-        render_first_run_setup()
-        return
-
-    try:
-        df = get_data()
-    except Exception as e:
-        st.error(f"Erreur de chargement : {e}")
-        st.stop()
 
     page = render_sidebar()
 

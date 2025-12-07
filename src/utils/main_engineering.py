@@ -3,7 +3,7 @@ import streamlit as st
 from pathlib import Path
 from typing import Any
 
-from src.utils.file import chemin_fichier
+from src.utils.find_path import chemin_fichier
 
 # --- Constante de session : toutes les bases brutes ---
 RAW_DATASETS_KEY = "RAW_DATASETS"
@@ -37,82 +37,89 @@ def load_csv_safely(path_or_buf: Any)-> pd.DataFrame :
 
 
 
+def check_data() -> None:
+    """Charge automatiquement les bases depuis le dossier local et expose les DataFrames,
+    avec un bouton d’affichage en pied de page (contenu caché par défaut).
+    """
 
+    # --- 1) Flag de visibilité : par défaut TOUT est caché ---
+    if "SHOW_CHECK_DATA" not in st.session_state:
+        st.session_state["SHOW_CHECK_DATA"] = False  # ⬅️ changement clé ici
 
-
-
-
-def render_first_run_setup() -> None:
-    """Charge automatiquement les bases depuis le dossier local et expose les DataFrames."""
-
-    st.title("📂 Chargement des bases de données")
-
-    # Vérifier existence du dossier
-    if not DATA_FOLDER.exists() or not DATA_FOLDER.is_dir():
-        st.error(
-            f"Le dossier `{DATA_FOLDER}` est introuvable.\n\n"
-            "Vérifie ce que retourne `chemin_fichier()` et la présence des fichiers Excel attendus."
-        )
-        # Debug éventuellement :
-        st.write("Valeur de DATA_FOLDER :", repr(DATA_FOLDER))
-        st.write("Type de DATA_FOLDER :", type(DATA_FOLDER))
-        return
-
-    st.info(f"Dossier détecté : `{DATA_FOLDER.resolve()}`")
+    show_content = st.session_state["SHOW_CHECK_DATA"]
 
     raw_dfs: dict[str, pd.DataFrame] = {}
-    errors: dict[str, Exception] = {}
-    missing_files: list[str] = []
 
-    # Charger les fichiers attendus
-    for fname in EXPECTED_FILES:
-        fpath = DATA_FOLDER / fname
-        if not fpath.exists():
-            missing_files.append(fname)
-            continue
-        try:
-            df = load_csv_safely(fpath)
-            raw_dfs[fname] = df
-        except Exception as e:
-            errors[fname] = e
+    # --- 2) CONTENU PRINCIPAL (affiché seulement APRES clic) ---
+    if show_content:
+        st.title("📂 Chargement des bases de données")
 
-    if missing_files:
-        st.warning("Fichiers manquants : " + ", ".join(missing_files))
-
-    if errors:
-        st.warning("⚠️ Certains fichiers n'ont pas pu être lus.")
-        with st.expander("Détails des erreurs de lecture"):
-            for name, e in errors.items():
-                st.write(f"**{name}**")
-                st.exception(e)
-
-    if not raw_dfs:
-        st.error("❌ Aucun fichier valide trouvé — vérifie le dossier et les noms de fichiers.")
-        return
-
-    # Stocker toutes les bases brutes dans la session
-    st.session_state[RAW_DATASETS_KEY] = raw_dfs
-    st.success("✅ Bases chargées et disponibles dans la session.")
-
-    # Aperçu rapide
-    st.subheader("Aperçu des bases chargées")
-    for name, df in raw_dfs.items():
-        with st.expander(f"{name} — {df.shape[0]} lignes × {df.shape[1]} colonnes"):
-            st.dataframe(df.head())
-
-    # Bouton d'accès aux statistiques
-    st.markdown("---")
-    if st.button("📊 Accès aux statistiques"):
-        if hasattr(st, "switch_page"):
-            try:
-                st.switch_page("pages/statistiques.py")  # à adapter si besoin
-            except Exception:
-                st.session_state["STATS_ACCESS"] = True
-                st.rerun()
+        # Vérifier existence du dossier
+        if not DATA_FOLDER.exists() or not DATA_FOLDER.is_dir():
+            st.error(
+                f"Le dossier `{DATA_FOLDER}` est introuvable.\n\n"
+                "Vérifie ce que retourne `chemin_fichier()` et la présence des fichiers Excel attendus."
+            )
+            st.write("Valeur de DATA_FOLDER :", repr(DATA_FOLDER))
+            st.write("Type de DATA_FOLDER :", type(DATA_FOLDER))
         else:
-            st.session_state["STATS_ACCESS"] = True
-            st.rerun()
+            st.info(f"Dossier détecté : `{DATA_FOLDER.resolve()}`")
+
+            errors: dict[str, Exception] = {}
+            missing_files: list[str] = []
+
+            # Charger les fichiers attendus
+            for fname in EXPECTED_FILES:
+                fpath = DATA_FOLDER / fname
+                if not fpath.exists():
+                    missing_files.append(fname)
+                    continue
+                try:
+                    df = load_csv_safely(fpath)
+                    raw_dfs[fname] = df
+                except Exception as e:
+                    errors[fname] = e
+
+            if missing_files:
+                st.warning("Fichiers manquants : " + ", ".join(missing_files))
+
+            if errors:
+                st.warning("⚠️ Certains fichiers n'ont pas pu être lus.")
+                with st.expander("Détails des erreurs de lecture"):
+                    for name, e in errors.items():
+                        st.write(f"**{name}**")
+                        st.exception(e)
+
+            if not raw_dfs:
+                st.error(
+                    "❌ Aucun fichier valide trouvé — vérifie le dossier et les noms de fichiers."
+                )
+            else:
+                # Stockage en session
+                st.session_state[RAW_DATASETS_KEY] = raw_dfs
+                st.success("✅ Bases chargées et disponibles dans la session.")
+
+                # Aperçu rapide
+                st.subheader("Aperçu des bases chargées")
+                for name, df in raw_dfs.items():
+                    with st.expander(
+                        f"{name} — {df.shape[0]} lignes × {df.shape[1]} colonnes"
+                    ):
+                        st.dataframe(df.head())
+
+    # --- 3) BOUTON FOOTER (TOUJOURS VISIBLE) ---
+    st.markdown("---")
+
+    label = (
+        "🔽 Masquer les données"
+        if show_content
+        else "📂 Afficher les données chargées"
+    )
+
+    if st.button(label, key="CHECK_DATA_TOGGLE"):
+        st.session_state["SHOW_CHECK_DATA"] = not show_content
+        st.rerun()
 
 
 if __name__ == "__main__":
-    render_first_run_setup()
+    check_data()

@@ -2,7 +2,7 @@ import pandas as pd
 from pathlib import Path
 from typing import Dict
 
-from src.utils.file import chemin_fichier
+from src.utils.find_path import chemin_fichier
 from src.utils.main_engineering import load_csv_safely
 
 
@@ -30,19 +30,19 @@ def take_all_file():
 
 #Chargement de toutes les bases séparéments
 
-def take_commande_file():
+def df_commande_file():
     df = take_all_file()['base_commande.xls']
     return df
-def take_article_file():
+def df_article_file():
     df = take_all_file()['article_precis_avec_code.xls']
     return df
-def take_client_prosp_file():
+def df_client_prosp_file():
     df = take_all_file()['client_prospect.xls']
     return df
-def take_clients_file():
+def df_clients_file():
     df = take_all_file()['histo_clients.xls']
     return df
-def take_stok_file():
+def df_stok_file():
     df = take_all_file()['mouv_stock.xls']
     return df
 
