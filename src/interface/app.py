@@ -1148,7 +1148,7 @@ def main() -> None:
         fdf, top_n = build_filters(df)
         render_quality_and_kpis(fdf)
         mapping = {
-            "Analyses:overview": "Vue d’ensemble",
+            "Analyses:overview": "Vue d'ensemble",
             "Analyses:time": "Évolution",
             "Analyses:types": "Types & clients",
             "Analyses:products": "Produits",
@@ -1156,7 +1156,7 @@ def main() -> None:
             "Analyses:prices": "Analyse des prix",
             "Analyses:table": "Table / Export",
         }
-        render_analysis_tabs(fdf, top_n, mapping.get(page, "Vue d’ensemble"))
+        render_analysis_tabs(fdf, top_n, mapping.get(page, "Vue d'ensemble"))
         return
 
     # Outils routing
