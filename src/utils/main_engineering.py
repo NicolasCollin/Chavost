@@ -25,16 +25,12 @@ def _resolve_data_folder() -> Path:
 
     folder = chemin_fichier()  # may be str | Path | None depending on implementation
     if folder is None:
-        raise FileNotFoundError(
-            "chemin_fichier() returned None; cannot resolve data folder"
-        )
+        raise FileNotFoundError("chemin_fichier() returned None; cannot resolve data folder")
 
     return Path(folder)
 
 
-DATA_FOLDER: Final[Path] = (
-    _resolve_data_folder()
-)  # resolved local folder containing the Excel files
+DATA_FOLDER: Final[Path] = _resolve_data_folder()  # resolved local folder containing the Excel files
 
 
 def load_file_safely(path_or_buf: Any) -> pd.DataFrame:
@@ -52,7 +48,8 @@ def load_file_safely(path_or_buf: Any) -> pd.DataFrame:
         return pd.read_excel(path_or_buf)
 
     is_csv = (
-        isinstance(path_or_buf, (str, Path)) and path_str.lower().endswith(".csv")
+        isinstance(path_or_buf, (str, Path))
+        and path_str.lower().endswith(".csv")
     ) or name.lower().endswith(".csv")
 
     if is_csv:
@@ -61,19 +58,22 @@ def load_file_safely(path_or_buf: Any) -> pd.DataFrame:
     raise ValueError(f"Unsupported file type for: {path_or_buf!r}")
 
 
+def load_csv_safely(path_or_buf: Any) -> pd.DataFrame:
+    """Backward-compatible alias for older modules."""
+
+    return load_file_safely(path_or_buf)
+
+
 @dataclass(frozen=True)
 class DataChecker:
     """Streamlit helper to load and preview local datasets on demand."""
 
     data_folder: Path = DATA_FOLDER
-    expected_files: list[str] = None  # type: ignore[assignment]
+    expected_files: list[str] | None = None
 
     def __post_init__(self) -> None:
-        object.__setattr__(
-            self,
-            "expected_files",
-            EXPECTED_FILES if self.expected_files is None else self.expected_files,
-        )
+        if self.expected_files is None:
+            object.__setattr__(self, "expected_files", list(EXPECTED_FILES))
 
     def run(self) -> None:
         """Render the Streamlit UI and (optionally) load datasets into the session."""
@@ -100,7 +100,7 @@ class DataChecker:
                 errors: dict[str, Exception] = {}
                 missing_files: list[str] = []
 
-                for filename in self.expected_files:
+                for filename in (self.expected_files or []):
                     file_path = self.data_folder / filename
 
                     if not file_path.exists():
@@ -118,9 +118,9 @@ class DataChecker:
                 if errors:
                     st.warning("⚠️ Some files could not be read.")
                     with st.expander("Read errors"):
-                        for file_name, exc in errors.items():
+                        for file_name, err in errors.items():
                             st.write(f"**{file_name}**")
-                            st.exception(exc)
+                            st.exception(err)
 
                 if not raw_dfs:
                     st.error("❌ No valid file found — check the folder and filenames.")
@@ -130,9 +130,7 @@ class DataChecker:
 
                     st.subheader("Quick preview")
                     for file_name, df in raw_dfs.items():
-                        with st.expander(
-                            f"{file_name} — {df.shape[0]} rows × {df.shape[1]} columns"
-                        ):
+                        with st.expander(f"{file_name} — {df.shape[0]} rows × {df.shape[1]} columns"):
                             st.dataframe(df.head())
 
         st.markdown("---")
