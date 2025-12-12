@@ -222,34 +222,6 @@ def main() -> None:
         render_home()
         return
 
-    # Analyses routing
-    if page.startswith("Analyses:"):
-        render_onboarding()
-        fdf, top_n = build_filters(df)
-        render_quality_and_kpis(fdf)
-        mapping = {
-            "Analyses:overview": "Vue d'ensemble",
-            "Analyses:time": "Évolution",
-            "Analyses:types": "Types & clients",
-            "Analyses:products": "Produits",
-            "Analyses:map": "Carte export",
-            "Analyses:prices": "Analyse des prix",
-            "Analyses:table": "Table / Export",
-        }
-        render_analysis_tabs(fdf, top_n, mapping.get(page, "Vue d'ensemble"))
-        return
-
-    # Outils routing
-    if page == "Outils:client":
-        render_onboarding()
-        render_tools(df, "Explorateur client")
-    elif page == "Outils:add":
-        render_onboarding()
-        render_tools(df, "Ajouter des ventes")
-    elif page == "Outils:db":
-        render_onboarding()
-        render_tools(df, "🧩 Gestion base")
-
 
 if __name__ == "__main__":
     main()

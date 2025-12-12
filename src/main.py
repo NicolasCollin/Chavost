@@ -7,7 +7,7 @@ from pathlib import Path
 
 def main():
     """Launch the Streamlit interface."""
-    app_path = Path(__file__).parent / "interface" / "app.py"
+    app_path = Path(__file__).parent / "interface" / "app_2.py"
     subprocess.run(
         [sys.executable, "-m", "streamlit", "run", str(app_path)], check=True
     )
