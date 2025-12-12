@@ -34,7 +34,6 @@ stages:
       # --- Install tools inside the venv (NOT system-wide)
       python -m pip install --upgrade pip
       python -m pip install --upgrade uv
-      python -m pip install --upgrade pip-audit
 
       uv --version
 
@@ -68,8 +67,11 @@ audit:
   extends: .ci-template
   script:
     - . .venv/bin/activate
-    - uv run pip-audit --version
-    - uv run pip-audit .
+    # Install pip-audit AFTER uv sync (uv sync can remove packages not in the lock)
+    - python -m pip install --upgrade pip-audit
+    # Run via module so we don't depend on a console script being on PATH
+    - python -m pip_audit --version
+    - python -m pip_audit .
   allow_failure: true
 
 
