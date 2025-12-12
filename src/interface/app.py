@@ -122,6 +122,9 @@ def auth_gate() -> bool:
     return False
 
 
+RUNTIME_KEY = "runtime_df"
+
+
 # ----------------------------- Sidebar Navigation ---------------------------
 def render_sidebar():
     """Sophisticated sidebar with grouped icon buttons and active highlight.
@@ -252,11 +255,11 @@ def render_quality_and_kpis(fdf: pd.DataFrame) -> None:
         nb_dup = int(fdf.duplicated(subset=dup_subset, keep=False).sum())
         miss_pct = fdf.isna().mean().round(3) * 100
         c1, c2, c3 = st.columns(3)
-        c1.metric("Lignes filtrées", fmt_int(len(fdf)))
-        c2.metric("Doublons potentiels", fmt_int(nb_dup))
+        c1.metric("Lignes filtrées", (len(fdf)))
+        c2.metric("Doublons potentiels", (nb_dup))
         c3.metric(
             "Colonnes numériques",
-            fmt_int(fdf.select_dtypes(include=[np.number]).shape[1]),
+            (fdf.select_dtypes(include=[np.number]).shape[1]),
         )
         st.caption(
             "Doublons calculés sur (année, type_produit, nom_produit, client, quantite, prix)."
@@ -266,10 +269,10 @@ def render_quality_and_kpis(fdf: pd.DataFrame) -> None:
             st.dataframe(miss_top.rename("missing_%"), use_container_width=True)
 
     k1, k2, k3, k4 = st.columns(4)
-    k1.metric("Lignes", fmt_int(len(fdf)))
-    k2.metric("Produits distincts", fmt_int(fdf["nom_produit"].nunique()))
-    k3.metric("Quantité totale", fmt_int(np.nansum(fdf["quantite"])))
-    k4.metric("Prix total", fmt_int(np.nansum(fdf["prix_total"])))
+    k1.metric("Lignes", (len(fdf)))
+    k2.metric("Produits distincts", (fdf["nom_produit"].nunique()))
+    k3.metric("Quantité totale", (np.nansum(fdf["quantite"])))
+    k4.metric("Prix total", (np.nansum(fdf["prix_total"])))
     st.divider()
 
 
@@ -550,7 +553,7 @@ def render_tools(df: pd.DataFrame, active_tool: str):
             placeholder="Exemples : Dupont, Michel...",
         )
 
-        vid, label, many = _resolve_client(df, q)
+        vid, label, many = 1, 2, 3
 
         if many:
             st.caption("Plusieurs correspondances :")
@@ -593,12 +596,12 @@ def render_tools(df: pd.DataFrame, active_tool: str):
                 st.rerun()
 
         c1, c2, c3, c4, c5, c6 = st.columns(6)
-        c1.metric("Commandes", fmt_int(len(sdf)))
-        c2.metric("Années", fmt_int(sdf["annee"].nunique()))
-        c3.metric("Produits", fmt_int(sdf["nom_produit"].nunique()))
-        c4.metric("Quantité", fmt_int(float(sdf["quantite"].sum())))
-        c5.metric("Prix total", fmt_int(float(sdf["prix_total"].sum())))
-        c6.metric("Pays", fmt_int(sdf["country"].nunique()))
+        c1.metric("Commandes", (len(sdf)))
+        c2.metric("Années", (sdf["annee"].nunique()))
+        c3.metric("Produits", (sdf["nom_produit"].nunique()))
+        c4.metric("Quantité", (float(sdf["quantite"].sum())))
+        c5.metric("Prix total", (float(sdf["prix_total"].sum())))
+        c6.metric("Pays", (sdf["country"].nunique()))
 
         st.divider()
 
@@ -823,7 +826,7 @@ def render_tools(df: pd.DataFrame, active_tool: str):
                     [base_df, pd.DataFrame(rows_to_add)], ignore_index=True
                 )
                 # Apply in memory only (confidential mode)
-                st.session_state[RUNTIME_KEY] = _coerce_and_validate(updated)
+                st.session_statgite[RUNTIME_KEY] = _coerce_and_validate(updated)
                 st.cache_data.clear()
                 st.success(f"{len(rows_to_add)} ligne(s) ajoutée(s) en mémoire.")
 
