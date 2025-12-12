@@ -2,15 +2,12 @@
 This module defines the Streamlit UI and a minimal in-app authentication.
 """
 
-import io
-
-import numpy as np
-import pandas as pd
 import plotly.express as px
 import streamlit as st
 
 from src.utils.main_engineering import check_data
 from src.interface.home import render_home
+from src.interface.client import client_tool
 
 # =============================================================================
 # Page metadata / Theme
@@ -54,6 +51,7 @@ st.markdown(
 )
 px.defaults.template = "plotly_white"
 BRAND_COLORS = px.colors.qualitative.Set2
+
 
 def auth_gate() -> bool:
     """Very simple in-app authentication.
@@ -118,7 +116,10 @@ def auth_gate() -> bool:
     )
     return False
 
+
+# Faudra que tu m'explique j'ai pas compris ca
 RUNTIME_KEY = "runtime_df"
+
 
 ## Ca on va juste modifier les choses principales genre tout les boutons mais on garde l'idée
 def render_sidebar():
@@ -182,7 +183,8 @@ def render_sidebar():
 
         return st.session_state.page
 
-#On garde le guide qui est bien
+
+# On garde le guide qui est bien
 def render_onboarding() -> None:
     st.title("Chavost — Tableau de bord ventes")
     with st.expander("🧭 Comment utiliser (guide rapide)", expanded=True):
@@ -202,10 +204,12 @@ def render_onboarding() -> None:
             """
         )
 
-#On retire les filtres, car comme il y a beacoup de base, cela ne sert plus à rien.
+
+# Faudra que tu refasse les filtres genre rajouter pays, types de produit, noms produit et une echelle de temps
 
 
-#La on fera le squelette en fonciton des boutons qu'on va configurer
+# La on fera le squelette en fonciton des boutons qu'on va configurer
+
 
 # et la on fait le main
 def main() -> None:
@@ -219,12 +223,13 @@ def main() -> None:
     page = render_sidebar()
 
     if page == "Accueil":
+        render_onboarding()
         render_home()
         return
+    elif page == "Outils:client":
+        render_onboarding()
+        client_tool()
 
 
 if __name__ == "__main__":
     main()
-
-
-
