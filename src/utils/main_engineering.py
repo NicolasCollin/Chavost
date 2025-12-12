@@ -25,12 +25,16 @@ def _resolve_data_folder() -> Path:
 
     folder = chemin_fichier()  # may be str | Path | None depending on implementation
     if folder is None:
-        raise FileNotFoundError("chemin_fichier() returned None; cannot resolve data folder")
+        raise FileNotFoundError(
+            "chemin_fichier() returned None; cannot resolve data folder"
+        )
 
     return Path(folder)
 
 
-DATA_FOLDER: Final[Path] = _resolve_data_folder()  # resolved local folder containing the Excel files
+DATA_FOLDER: Final[Path] = (
+    _resolve_data_folder()
+)  # resolved local folder containing the Excel files
 
 
 def load_file_safely(path_or_buf: Any) -> pd.DataFrame:
@@ -48,8 +52,7 @@ def load_file_safely(path_or_buf: Any) -> pd.DataFrame:
         return pd.read_excel(path_or_buf)
 
     is_csv = (
-        isinstance(path_or_buf, (str, Path))
-        and path_str.lower().endswith(".csv")
+        isinstance(path_or_buf, (str, Path)) and path_str.lower().endswith(".csv")
     ) or name.lower().endswith(".csv")
 
     if is_csv:
@@ -100,7 +103,7 @@ class DataChecker:
                 errors: dict[str, Exception] = {}
                 missing_files: list[str] = []
 
-                for filename in (self.expected_files or []):
+                for filename in self.expected_files or []:
                     file_path = self.data_folder / filename
 
                     if not file_path.exists():
@@ -130,7 +133,9 @@ class DataChecker:
 
                     st.subheader("Quick preview")
                     for file_name, df in raw_dfs.items():
-                        with st.expander(f"{file_name} — {df.shape[0]} rows × {df.shape[1]} columns"):
+                        with st.expander(
+                            f"{file_name} — {df.shape[0]} rows × {df.shape[1]} columns"
+                        ):
                             st.dataframe(df.head())
 
         st.markdown("---")
