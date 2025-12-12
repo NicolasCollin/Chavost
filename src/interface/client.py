@@ -1,6 +1,4 @@
-import streamlit as st 
-import pandas as pd
-from src.utils.engineering import df_article, df_commande, df_clients, df_stock, df_client_prosp
+import streamlit as st
 
 
 def client_tool():
@@ -11,6 +9,3 @@ def client_tool():
 Bienvenue sur **L'explorateur de clients** de Chavost.
 """
     )
-    df =  df_clients()
-    
-    

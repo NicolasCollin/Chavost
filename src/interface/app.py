@@ -3,14 +3,13 @@ This module defines the Streamlit UI and a minimal in-app authentication.
 """
 
 import io
+from pathlib import Path
+from typing import Any
 
 import numpy as np
 import pandas as pd
 import plotly.express as px
 import streamlit as st
-
-from src.utils.main_engineering import check_data
-from src.interface.home import render_home
 
 # =============================================================================
 # Page metadata / Theme
@@ -122,7 +121,259 @@ def auth_gate() -> bool:
     return False
 
 
+# ----------------------------- Constants ------------------------------------
+DATA_DIR = Path(__file__).parents[2] / "data"
+DATA_PATH = DATA_DIR / "base_cryptee.csv"
 RUNTIME_KEY = "runtime_df"
+
+# ----------------------------- Helpers --------------------------------------
+
+
+def fmt_int(x: float | int) -> str:
+    """Format integer with thin spaces as thousands separators (fallback em-dash)."""
+    try:
+        return f"{int(x):,}".replace(",", " ")
+    except Exception:
+        return "—"
+
+
+# --- Schema coercion & validation used for both loading and uploading
+
+
+def _coerce_and_validate(df: pd.DataFrame) -> pd.DataFrame:
+    """Normalise, valide le schéma, et crée les champs dérivés.
+    Retourne un DataFrame prêt pour l'application.
+    """
+    # Normalisation des colonnes et schéma attendu
+    df.columns = [c.strip().lower() for c in df.columns]
+    expected = [
+        "annee",
+        "type_produit",
+        "nom_produit",
+        "quantite",
+        "prix",
+        "vecteur_id",
+        "country",
+    ]
+    missing = [c for c in expected if c not in df.columns]
+    if missing:
+        raise ValueError(f"Colonnes manquantes dans le CSV : {missing}")
+
+    df["annee"] = pd.to_numeric(df["annee"], errors="coerce").astype("Int64")
+    df["quantite"] = pd.to_numeric(df["quantite"], errors="coerce")
+    df["prix"] = pd.to_numeric(df["prix"], errors="coerce")
+    df["type_produit"] = df["type_produit"].astype(str)
+    df["nom_produit"] = df["nom_produit"].astype(str)
+    df["vecteur_id"] = df["vecteur_id"].astype(str)
+    df["country"] = df["country"].astype(str)
+
+    df = df.dropna(subset=["annee", "quantite", "prix"]).copy()
+
+    # Champs dérivés
+    df["annee_str"] = df["annee"].astype("Int64").astype(str)
+    if "nom_client" in df.columns:
+        df["client"] = df["nom_client"].astype(str)
+    else:
+        df["client"] = df["vecteur_id"]
+    df["prix_total"] = df["prix"]  # métrique métier = prix total
+    return df
+
+
+# --- Client resolver (id or name -> vecteur_id, display name)
+def _resolve_client(
+    df: pd.DataFrame, query: str
+) -> tuple[str | None, str | None, list[tuple[str, str]]]:
+    """Resolve a client from free-text.
+    Returns (vecteur_id, display_name, candidates) where candidates is a list of (id, label)
+    when multiple matches exist. If a unique match is found, candidates is empty.
+    Matching order: exact id -> exact name -> contains on id/name (case-insensitive).
+    """
+    if not query:
+        return None, None, []
+    q = str(query).strip()
+    qlow = q.lower()
+
+    # Build name map (supports future client_name)
+    has_names = "nom_client" in df.columns
+    ids = df["vecteur_id"].astype(str)
+    if has_names:
+        names = df["nom_client"].astype(str)
+        label_series = names
+    else:
+        # Fallback label = id
+        names = pd.Series([""] * len(df))
+        label_series = ids
+
+    # Exact id
+    if (ids == q).any():
+        vid = ids[ids == q].iloc[0]
+        label = label_series[ids == q].iloc[0]
+        return str(vid), str(label), []
+
+    # Exact name (if available)
+    if has_names and (names.str.lower() == qlow).any():
+        vid = ids[names.str.lower() == qlow].iloc[0]
+        label = label_series[names.str.lower() == qlow].iloc[0]
+        return str(vid), str(label), []
+
+    # Contains (id or name)
+    mask = ids.str.contains(qlow, case=False, na=False) | names.str.contains(
+        qlow, case=False, na=False
+    )
+    cand = df.loc[mask, ["vecteur_id"]].copy()
+    if has_names:
+        cand["label"] = df.loc[mask, "nom_client"].astype(str)
+    else:
+        cand["label"] = cand["vecteur_id"].astype(str)
+    cand = cand.drop_duplicates()
+
+    if len(cand) == 0:
+        return None, None, []
+    if len(cand) == 1:
+        row = cand.iloc[0]
+        return str(row["vecteur_id"]), str(row["label"]), []
+    # multiple
+    return (
+        None,
+        None,
+        [(str(r["vecteur_id"]), str(r["label"])) for _, r in cand.iterrows()],
+    )
+
+
+def load_csv_safely(path_or_buf: Any) -> pd.DataFrame:
+    """Robust CSV loader that tries a few common separators/number formats."""
+    for kwargs in (
+        dict(sep=",", thousands=",", decimal="."),
+        dict(sep=",", thousands=" ", decimal=","),
+        dict(sep=","),
+        dict(sep=";"),
+    ):
+        try:
+            df = pd.read_csv(path_or_buf, **kwargs)
+            if df.shape[1] >= 2:
+                return df
+        except Exception:
+            continue
+    return pd.read_csv(path_or_buf)
+
+
+@st.cache_data(show_spinner=False)
+def get_data() -> pd.DataFrame:
+    """Load, validate, and coerce the base dataset.
+    Priority: in-memory session state -> legacy CSV on disk -> error.
+    """
+    # 1) Session state takes precedence (no persistence to disk for confidentiality)
+    runtime_df = st.session_state.get(RUNTIME_KEY)
+    if isinstance(runtime_df, pd.DataFrame) and not runtime_df.empty:
+        return _coerce_and_validate(runtime_df.copy())
+
+    # 2) Legacy fallback: if a CSV exists (e.g., local dev), allow reading it
+    if DATA_PATH.exists():
+        df = load_csv_safely(DATA_PATH)
+        return _coerce_and_validate(df)
+
+    # 3) Otherwise, no data yet
+    raise FileNotFoundError(
+        "Aucune base chargée. Importez un CSV confidentiel pour démarrer."
+    )
+
+
+# ----------------------------- UI Blocks ------------------------------------
+
+# ------------------------- First-run dataset import --------------------------
+
+
+def render_first_run_setup() -> None:
+    st.title("🔐 Configuration initiale — Importer votre base")
+    st.markdown(
+        """
+        Cette application ne contient **aucune donnée** dans le dépôt Git.
+        Pour l'utiliser, importez ici votre fichier **CSV** conforme au schéma attendu.
+
+        **Colonnes requises** : `annee`, `type_produit`, `nom_produit`, `quantite`, `prix`, `vecteur_id`, `country`.
+        """
+    )
+    up = st.file_uploader(
+        "Choisissez votre CSV confidentiel", type=["csv"], accept_multiple_files=False
+    )
+    if up is None:
+        st.info("Aucun fichier sélectionné pour l'instant.")
+        return
+
+    try:
+        df = load_csv_safely(up)
+        df = _coerce_and_validate(df)
+        # Confidential mode: keep in memory only, do NOT write to disk
+        st.session_state[RUNTIME_KEY] = df
+        st.success(
+            "Base importée en mémoire (non enregistrée sur le serveur). Rechargement…"
+        )
+        st.cache_data.clear()
+        st.rerun()
+    except Exception as e:
+        st.error(f"Fichier invalide ou non conforme : {e}")
+        with st.expander("Voir un extrait de l'erreur"):
+            st.exception(e)
+
+
+# ----------------------------- UI Blocks ------------------------------------
+def render_home() -> None:
+    st.title("🏠 Accueil — Chavost")
+    st.markdown(
+        """
+Bienvenue sur le **tableau de bord ventes** de Chavost.
+
+**Ce que vous pouvez faire :**
+- Explorer vos ventes par **année**, **type**, **produit**, **pays**.
+- Suivre vos **clients** (numéro aujourd'hui, **nom** demain) et ajouter des ventes.
+- Exporter des sous-ensembles de données et **gérer la base** facilement.
+        """
+    )
+
+    # KPIs
+    c1, c2, c3 = st.columns(3)
+    try:
+        df = get_data()
+        c1.metric("Ventes (lignes)", fmt_int(len(df)))
+        c2.metric("Produits distincts", fmt_int(df["nom_produit"].nunique()))
+        c3.metric("Pays", fmt_int(df["country"].nunique()))
+    except Exception as e:
+        st.info(f"Aperçu indisponible : {e}")
+
+    st.divider()
+
+    # Quick actions
+    st.subheader("Raccourcis")
+    q1, q2, q3 = st.columns(3)
+    if q1.button("📊 Ouvrir — Vue d’ensemble", use_container_width=True):
+        st.session_state.page = "Analyses:overview"
+        st.rerun()
+    if q2.button("🗺️ Ouvrir — Carte export", use_container_width=True):
+        st.session_state.page = "Analyses:map"
+        st.rerun()
+    if q3.button("🧰 Ouvrir — Gestion base", use_container_width=True):
+        st.session_state.page = "Outils:db"
+        st.rerun()
+
+    # Mini trend
+    try:
+        by_year = (
+            get_data()
+            .groupby(["annee", "annee_str"], as_index=False)["prix"]
+            .sum()
+            .sort_values("annee")
+        )
+        if not by_year.empty:
+            fig = px.line(
+                by_year,
+                x="annee_str",
+                y="prix",
+                markers=True,
+                title="Tendance du prix total par année",
+            )
+            st.plotly_chart(fig, use_container_width=True)
+    except Exception:
+        pass
 
 
 # ----------------------------- Sidebar Navigation ---------------------------
@@ -255,11 +506,11 @@ def render_quality_and_kpis(fdf: pd.DataFrame) -> None:
         nb_dup = int(fdf.duplicated(subset=dup_subset, keep=False).sum())
         miss_pct = fdf.isna().mean().round(3) * 100
         c1, c2, c3 = st.columns(3)
-        c1.metric("Lignes filtrées", (len(fdf)))
-        c2.metric("Doublons potentiels", (nb_dup))
+        c1.metric("Lignes filtrées", fmt_int(len(fdf)))
+        c2.metric("Doublons potentiels", fmt_int(nb_dup))
         c3.metric(
             "Colonnes numériques",
-            (fdf.select_dtypes(include=[np.number]).shape[1]),
+            fmt_int(fdf.select_dtypes(include=[np.number]).shape[1]),
         )
         st.caption(
             "Doublons calculés sur (année, type_produit, nom_produit, client, quantite, prix)."
@@ -269,10 +520,10 @@ def render_quality_and_kpis(fdf: pd.DataFrame) -> None:
             st.dataframe(miss_top.rename("missing_%"), use_container_width=True)
 
     k1, k2, k3, k4 = st.columns(4)
-    k1.metric("Lignes", (len(fdf)))
-    k2.metric("Produits distincts", (fdf["nom_produit"].nunique()))
-    k3.metric("Quantité totale", (np.nansum(fdf["quantite"])))
-    k4.metric("Prix total", (np.nansum(fdf["prix_total"])))
+    k1.metric("Lignes", fmt_int(len(fdf)))
+    k2.metric("Produits distincts", fmt_int(fdf["nom_produit"].nunique()))
+    k3.metric("Quantité totale", fmt_int(np.nansum(fdf["quantite"])))
+    k4.metric("Prix total", fmt_int(np.nansum(fdf["prix_total"])))
     st.divider()
 
 
@@ -553,7 +804,7 @@ def render_tools(df: pd.DataFrame, active_tool: str):
             placeholder="Exemples : Dupont, Michel...",
         )
 
-        vid, label, many = 1, 2, 3
+        vid, label, many = _resolve_client(df, q)
 
         if many:
             st.caption("Plusieurs correspondances :")
@@ -596,12 +847,12 @@ def render_tools(df: pd.DataFrame, active_tool: str):
                 st.rerun()
 
         c1, c2, c3, c4, c5, c6 = st.columns(6)
-        c1.metric("Commandes", (len(sdf)))
-        c2.metric("Années", (sdf["annee"].nunique()))
-        c3.metric("Produits", (sdf["nom_produit"].nunique()))
-        c4.metric("Quantité", (float(sdf["quantite"].sum())))
-        c5.metric("Prix total", (float(sdf["prix_total"].sum())))
-        c6.metric("Pays", (sdf["country"].nunique()))
+        c1.metric("Commandes", fmt_int(len(sdf)))
+        c2.metric("Années", fmt_int(sdf["annee"].nunique()))
+        c3.metric("Produits", fmt_int(sdf["nom_produit"].nunique()))
+        c4.metric("Quantité", fmt_int(float(sdf["quantite"].sum())))
+        c5.metric("Prix total", fmt_int(float(sdf["prix_total"].sum())))
+        c6.metric("Pays", fmt_int(sdf["country"].nunique()))
 
         st.divider()
 
@@ -826,7 +1077,7 @@ def render_tools(df: pd.DataFrame, active_tool: str):
                     [base_df, pd.DataFrame(rows_to_add)], ignore_index=True
                 )
                 # Apply in memory only (confidential mode)
-                st.session_statgite[RUNTIME_KEY] = _coerce_and_validate(updated)
+                st.session_state[RUNTIME_KEY] = _coerce_and_validate(updated)
                 st.cache_data.clear()
                 st.success(f"{len(rows_to_add)} ligne(s) ajoutée(s) en mémoire.")
 
@@ -909,8 +1160,21 @@ def main() -> None:
     if not auth_gate():
         return
 
-    # vérification si l'utilisateur possède les bases de données requises
-    check_data()
+    # Autoriser l'accès si une base est en mémoire OU si un CSV existe sur disque (mode dev).
+    has_runtime = (
+        isinstance(st.session_state.get(RUNTIME_KEY), pd.DataFrame)
+        and not st.session_state[RUNTIME_KEY].empty
+    )
+
+    if not has_runtime and not DATA_PATH.exists():
+        render_first_run_setup()
+        return
+
+    try:
+        df = get_data()
+    except Exception as e:
+        st.error(f"Erreur de chargement : {e}")
+        st.stop()
 
     page = render_sidebar()
 
@@ -924,7 +1188,7 @@ def main() -> None:
         fdf, top_n = build_filters(df)
         render_quality_and_kpis(fdf)
         mapping = {
-            "Analyses:overview": "Vue d'ensemble",
+            "Analyses:overview": "Vue d’ensemble",
             "Analyses:time": "Évolution",
             "Analyses:types": "Types & clients",
             "Analyses:products": "Produits",
@@ -932,7 +1196,7 @@ def main() -> None:
             "Analyses:prices": "Analyse des prix",
             "Analyses:table": "Table / Export",
         }
-        render_analysis_tabs(fdf, top_n, mapping.get(page, "Vue d'ensemble"))
+        render_analysis_tabs(fdf, top_n, mapping.get(page, "Vue d’ensemble"))
         return
 
     # Outils routing

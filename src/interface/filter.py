@@ -1,7 +1,6 @@
-import pandas as pd
-import streamlit as st 
+import streamlit as st
 
-from src.utils.engineering import df_article, df_commande, df_clients, df_stock, df_client_prosp
+from src.utils.engineering import df_commande, df_stock
 
 
 def build_filters():
@@ -20,8 +19,7 @@ def build_filters():
             value=(date_min, date_max),
             format="DD/MM/YYYY",
         )
-        
-        
+
         years_all = [
             y for y in df["annee"].dropna().astype(int).sort_values().unique().tolist()
         ]
@@ -50,5 +48,4 @@ def build_filters():
     if fdf.empty:
         st.warning("Aucune ligne avec ces filtres.")
         st.stop()
-    return fdf, top_n
-
+    return fdf, top_n, df_s, date_range

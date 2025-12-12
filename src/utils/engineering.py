@@ -74,6 +74,3 @@ def df_clients():
     # retravail des types selon les variables
 
     return data
-
-
-print(df_stock().columns)
