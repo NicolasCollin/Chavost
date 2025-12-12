@@ -10,7 +10,9 @@ import pandas as pd
 from src.utils.main_engineering import load_csv_safely
 
 
-CHEMIN_FICHIER_JSON: Final[Path] = Path("secrets/chemins.json")  # JSON cache for discovered paths
+CHEMIN_FICHIER_JSON: Final[Path] = Path(
+    "secrets/chemins.json"
+)  # JSON cache for discovered paths
 RAW_DATASETS_KEY: Final[str] = "RAW_DATASETS"  # legacy key kept for compatibility
 EXPECTED_FILES: Final[list[str]] = [
     "article_precis_avec_code.xls",
@@ -49,7 +51,9 @@ class FolderLocator:
             json.dump(paths, handle, indent=4)
 
     @staticmethod
-    def is_valid_folder(folder_path: str, expected_files: Sequence[str] | None = None) -> bool:
+    def is_valid_folder(
+        folder_path: str, expected_files: Sequence[str] | None = None
+    ) -> bool:
         """Return True if the folder exists and contains all expected files (if provided)."""
 
         folder = Path(folder_path)
@@ -91,7 +95,9 @@ class FolderLocator:
 
         return None
 
-    def resolve_folder(self, folder_name: str, expected_files: Sequence[str] | None = None) -> str | None:
+    def resolve_folder(
+        self, folder_name: str, expected_files: Sequence[str] | None = None
+    ) -> str | None:
         """Resolve a folder path using cache first, then a slow recursive search."""
 
         cached_paths = self.load_cached_paths()
@@ -151,7 +157,9 @@ if _data_folder_str is None:
         "Check the file location or update secrets/chemins.json."
     )
 
-DATA_FOLDER: Final[Path] = Path(_data_folder_str)  # resolved folder containing the exported files
+DATA_FOLDER: Final[Path] = Path(
+    _data_folder_str
+)  # resolved folder containing the exported files
 _loader = DatasetLoader(DATA_FOLDER)
 
 
