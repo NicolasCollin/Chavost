@@ -6,8 +6,8 @@ import plotly.express as px
 import streamlit as st
 
 from src.utils.main_engineering import check_data
-from src.interface.home import render_home
-from src.interface.client import client_tool
+from src.interface.onglet.home import render_home
+from src.interface.onglet.client import client_tool
 
 # =============================================================================
 # Page metadata / Theme
@@ -165,21 +165,17 @@ def render_sidebar():
             "<div class='sidebar-subtitle'>Analyses</div>", unsafe_allow_html=True
         )
         with st.container(border=True):
-            nav_btn("Vue d’ensemble", "Analyses:overview", icon="📊")
-            nav_btn("Évolution", "Analyses:time", icon="📈")
-            nav_btn("Types & clients", "Analyses:types", icon="👥")
-            nav_btn("Produits", "Analyses:products", icon="🧪")
+            nav_btn("Analyse des ventes", "Analyses:sales", icon="📊")
+            nav_btn("Analyse des produits", "Analyses:product", icon="🍾")
+            nav_btn("Gestion des stock", "Analyses:stock", icon="📦")
+            nav_btn("Prédictions", "Analyses:prediction", icon="🔮")
             nav_btn("Carte export", "Analyses:map", icon="🗺️")
-            nav_btn("Analyse des prix", "Analyses:prices", icon="💶")
-            nav_btn("Table / Export", "Analyses:table", icon="📄")
-
         st.markdown(
             "<div class='sidebar-subtitle'>Outils</div>", unsafe_allow_html=True
         )
         with st.container(border=True):
             nav_btn("Explorateur client", "Outils:client", icon="🔎")
-            nav_btn("Ajouter des ventes", "Outils:add", icon="➕")
-            nav_btn("Gestion base", "Outils:db", icon="🧩")
+            nav_btn("Avis pour amélioration", "Outils:improve", icon="📧")
 
         return st.session_state.page
 
