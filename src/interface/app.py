@@ -3,8 +3,6 @@ This module defines the Streamlit UI and a minimal in-app authentication.
 """
 
 import io
-from pathlib import Path
-from typing import Any
 
 import numpy as np
 import pandas as pd
@@ -12,6 +10,7 @@ import plotly.express as px
 import streamlit as st
 
 from src.utils.main_engineering import check_data
+from src.interface.home import render_home
 
 # =============================================================================
 # Page metadata / Theme
@@ -121,231 +120,6 @@ def auth_gate() -> bool:
         "Astuce : les identifiants par défaut sont *admin / admin*. Pensez à les changer rapidement."
     )
     return False
-
-
-# ----------------------------- Constants ------------------------------------
-DATA_DIR = Path(__file__).parents[2] / "data"
-DATA_PATH = DATA_DIR / "base_cryptee.csv"
-RUNTIME_KEY = "runtime_df"
-
-# ----------------------------- Helpers --------------------------------------
-
-
-def fmt_int(x: float | int) -> str:
-    """Format integer with thin spaces as thousands separators (fallback em-dash)."""
-    try:
-        return f"{int(x):,}".replace(",", " ")
-    except Exception:
-        return "—"
-
-
-# --- Schema coercion & validation used for both loading and uploading
-
-
-def _coerce_and_validate(df: pd.DataFrame) -> pd.DataFrame:
-    """Normalise, valide le schéma, et crée les champs dérivés.
-    Retourne un DataFrame prêt pour l'application.
-    """
-    # Normalisation des colonnes et schéma attendu
-    df.columns = [c.strip().lower() for c in df.columns]
-    expected = [
-        "annee",
-        "type_produit",
-        "nom_produit",
-        "quantite",
-        "prix",
-        "vecteur_id",
-        "country",
-    ]
-    missing = [c for c in expected if c not in df.columns]
-    if missing:
-        raise ValueError(f"Colonnes manquantes dans le CSV : {missing}")
-
-    df["annee"] = pd.to_numeric(df["annee"], errors="coerce").astype("Int64")
-    df["quantite"] = pd.to_numeric(df["quantite"], errors="coerce")
-    df["prix"] = pd.to_numeric(df["prix"], errors="coerce")
-    df["type_produit"] = df["type_produit"].astype(str)
-    df["nom_produit"] = df["nom_produit"].astype(str)
-    df["vecteur_id"] = df["vecteur_id"].astype(str)
-    df["country"] = df["country"].astype(str)
-
-    df = df.dropna(subset=["annee", "quantite", "prix"]).copy()
-
-    # Champs dérivés
-    df["annee_str"] = df["annee"].astype("Int64").astype(str)
-    if "nom_client" in df.columns:
-        df["client"] = df["nom_client"].astype(str)
-    else:
-        df["client"] = df["vecteur_id"]
-    df["prix_total"] = df["prix"]  # métrique métier = prix total
-    return df
-
-
-# --- Client resolver (id or name -> vecteur_id, display name)
-def _resolve_client(
-    df: pd.DataFrame, query: str
-) -> tuple[str | None, str | None, list[tuple[str, str]]]:
-    """Resolve a client from free-text.
-    Returns (vecteur_id, display_name, candidates) where candidates is a list of (id, label)
-    when multiple matches exist. If a unique match is found, candidates is empty.
-    Matching order: exact id -> exact name -> contains on id/name (case-insensitive).
-    """
-    if not query:
-        return None, None, []
-    q = str(query).strip()
-    qlow = q.lower()
-
-    # Build name map (supports future client_name)
-    has_names = "nom_client" in df.columns
-    ids = df["vecteur_id"].astype(str)
-    if has_names:
-        names = df["nom_client"].astype(str)
-        label_series = names
-    else:
-        # Fallback label = id
-        names = pd.Series([""] * len(df))
-        label_series = ids
-
-    # Exact id
-    if (ids == q).any():
-        vid = ids[ids == q].iloc[0]
-        label = label_series[ids == q].iloc[0]
-        return str(vid), str(label), []
-
-    # Exact name (if available)
-    if has_names and (names.str.lower() == qlow).any():
-        vid = ids[names.str.lower() == qlow].iloc[0]
-        label = label_series[names.str.lower() == qlow].iloc[0]
-        return str(vid), str(label), []
-
-    # Contains (id or name)
-    mask = ids.str.contains(qlow, case=False, na=False) | names.str.contains(
-        qlow, case=False, na=False
-    )
-    cand = df.loc[mask, ["vecteur_id"]].copy()
-    if has_names:
-        cand["label"] = df.loc[mask, "nom_client"].astype(str)
-    else:
-        cand["label"] = cand["vecteur_id"].astype(str)
-    cand = cand.drop_duplicates()
-
-    if len(cand) == 0:
-        return None, None, []
-    if len(cand) == 1:
-        row = cand.iloc[0]
-        return str(row["vecteur_id"]), str(row["label"]), []
-    # multiple
-    return (
-        None,
-        None,
-        [(str(r["vecteur_id"]), str(r["label"])) for _, r in cand.iterrows()],
-    )
-
-
-def load_csv_safely(path_or_buf: Any) -> pd.DataFrame:
-    """Robust CSV loader that tries a few common separators/number formats."""
-    for kwargs in (
-        dict(sep=",", thousands=",", decimal="."),
-        dict(sep=",", thousands=" ", decimal=","),
-        dict(sep=","),
-        dict(sep=";"),
-    ):
-        try:
-            df = pd.read_csv(path_or_buf, **kwargs)
-            if df.shape[1] >= 2:
-                return df
-        except Exception:
-            continue
-    return pd.read_csv(path_or_buf)
-
-
-@st.cache_data(show_spinner=False)
-def get_data() -> pd.DataFrame:
-    """Load, validate, and coerce the base dataset.
-    Priority: in-memory session state -> legacy CSV on disk -> error.
-    """
-    # 1) Session state takes precedence (no persistence to disk for confidentiality)
-    runtime_df = st.session_state.get(RUNTIME_KEY)
-    if isinstance(runtime_df, pd.DataFrame) and not runtime_df.empty:
-        return _coerce_and_validate(runtime_df.copy())
-
-    # 2) Legacy fallback: if a CSV exists (e.g., local dev), allow reading it
-    if DATA_PATH.exists():
-        df = load_csv_safely(DATA_PATH)
-        return _coerce_and_validate(df)
-
-    # 3) Otherwise, no data yet
-    raise FileNotFoundError(
-        "Aucune base chargée. Importez un CSV confidentiel pour démarrer."
-    )
-
-
-# ----------------------------- UI Blocks ------------------------------------
-
-# ------------------------- First-run dataset import --------------------------
-
-#/J'ai réussi à créer ma nouvelle fonction qui charge les données si la personne 
-# possède les fichier sur son ordinateurs ,la prochaine étape sera de modifier l'intégralité du site lol./#
-
-
-# ----------------------------- UI Blocks ------------------------------------
-def render_home() -> None:
-    st.title("🏠 Accueil — Chavost")
-    st.markdown(
-        """
-Bienvenue sur le **tableau de bord ventes** de Chavost.
-
-**Ce que vous pouvez faire :**
-- Explorer vos ventes par **année**, **type**, **produit**, **pays**.
-- Suivre vos **clients** (numéro aujourd'hui, **nom** demain) et ajouter des ventes.
-- Exporter des sous-ensembles de données et **gérer la base** facilement.
-        """
-    )
-
-    # KPIs
-    c1, c2, c3 = st.columns(3)
-    try:
-        df = get_data()
-        c1.metric("Ventes (lignes)", fmt_int(len(df)))
-        c2.metric("Produits distincts", fmt_int(df["nom_produit"].nunique()))
-        c3.metric("Pays", fmt_int(df["country"].nunique()))
-    except Exception as e:
-        st.info(f"Aperçu indisponible : {e}")
-
-    st.divider()
-
-    # Quick actions
-    st.subheader("Raccourcis")
-    q1, q2, q3 = st.columns(3)
-    if q1.button("📊 Ouvrir — Vue d’ensemble", use_container_width=True):
-        st.session_state.page = "Analyses:overview"
-        st.rerun()
-    if q2.button("🗺️ Ouvrir — Carte export", use_container_width=True):
-        st.session_state.page = "Analyses:map"
-        st.rerun()
-    if q3.button("🧰 Ouvrir — Gestion base", use_container_width=True):
-        st.session_state.page = "Outils:db"
-        st.rerun()
-
-    # Mini trend
-    try:
-        by_year = (
-            get_data()
-            .groupby(["annee", "annee_str"], as_index=False)["prix"]
-            .sum()
-            .sort_values("annee")
-        )
-        if not by_year.empty:
-            fig = px.line(
-                by_year,
-                x="annee_str",
-                y="prix",
-                markers=True,
-                title="Tendance du prix total par année",
-            )
-            st.plotly_chart(fig, use_container_width=True)
-    except Exception:
-        pass
 
 
 # ----------------------------- Sidebar Navigation ---------------------------
@@ -1132,9 +906,8 @@ def main() -> None:
     if not auth_gate():
         return
 
-    #vérification si l'utilisateur possède les bases de données requises
+    # vérification si l'utilisateur possède les bases de données requises
     check_data()
-
 
     page = render_sidebar()
 

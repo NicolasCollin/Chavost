@@ -23,18 +23,17 @@ EXPECTED_FILES = [
 ]
 
 
-
-def load_csv_safely(path_or_buf: Any)-> pd.DataFrame :
+def load_csv_safely(path_or_buf: Any) -> pd.DataFrame:
     """Charge de manière robuste un fichier Excel ou CSV."""
     name = getattr(path_or_buf, "name", "")
     path_str = str(path_or_buf)
 
     # Excel prioritaire
     if (
-        isinstance(path_or_buf, (str, Path)) and path_str.lower().endswith((".xls", ".xlsx"))
+        isinstance(path_or_buf, (str, Path))
+        and path_str.lower().endswith((".xls", ".xlsx"))
     ) or name.lower().endswith((".xls", ".xlsx")):
         return pd.read_excel(path_or_buf)
-
 
 
 def check_data() -> None:
@@ -111,9 +110,7 @@ def check_data() -> None:
     st.markdown("---")
 
     label = (
-        "🔽 Masquer les données"
-        if show_content
-        else "📂 Afficher les données chargées"
+        "🔽 Masquer les données" if show_content else "📂 Afficher les données chargées"
     )
 
     if st.button(label, key="CHECK_DATA_TOGGLE"):

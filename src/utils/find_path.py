@@ -7,7 +7,27 @@ from src.utils.file import chemin_fichier
 
 import os
 from pathlib import Path
+import json
 import platform
+
+chemin_fichier_json = "src/utils/chemins.json"
+
+
+def charger_chemins():
+    """Charge les chemins déjà enregistrés dans le fichier JSON."""
+    if os.path.exists(chemin_fichier_json):
+        with open(chemin_fichier_json, "r") as f:
+            try:
+                return json.load(f)
+            except json.JSONDecodeError:
+                return []  # Si le fichier est vide ou corrompu
+    return []
+
+
+def enregistrer_chemins(chemins):
+    """Enregistre les chemins dans le fichier JSON."""
+    with open(chemin_fichier_json, "w") as f:
+        json.dump(chemins, f, indent=4)
 
 
 def find_folder(folder_name: str) -> str | None:

@@ -34,31 +34,36 @@ def df_client_prosp():
     return data
 
 
-def ing_stock():
+def df_stock():
     data = df_stok_file()
 
     # retravail des noms des colonnes.
     data.columns = (
         data.columns.str.strip().str.lower().str.replace(r"[^a-z0-9]+", "_", regex=True)
     )
-
+    data["quantite_reel"] = data["quantit_"].abs()
     # retravail des types selon les variables
 
     return data
 
-def ing_commande():
+
+def df_commande():
     data = df_commande_file()
 
     # retravail des noms des colonnes.
     data.columns = (
         data.columns.str.strip().str.lower().str.replace(r"[^a-z0-9]+", "_", regex=True)
     )
+    data["annee"] = data["date"].dt.year
+    data["mois"] = data["date"].dt.month_name(locale="fr_FR")
+    data["mois_annee"] = data["date"].dt.strftime("%y-%m")
 
     # retravail des types selon les variables
 
     return data
 
-def ing_clients():
+
+def df_clients():
     data = df_clients_file()
 
     # retravail des noms des colonnes.
@@ -69,3 +74,6 @@ def ing_clients():
     # retravail des types selon les variables
 
     return data
+
+
+print(df_stock().columns)
