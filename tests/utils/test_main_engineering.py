@@ -2,7 +2,6 @@
 Vérifie la lecture correcte de fichiers et la robustesse face à des types inconnus."""
 
 import pandas as pd
-import pytest
 from pathlib import Path
 
 from src.utils.main_engineering import load_csv_safely

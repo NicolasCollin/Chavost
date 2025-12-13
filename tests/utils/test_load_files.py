@@ -9,6 +9,7 @@ Objectifs :
 Ces tests sont volontairement simples et isolés du système de fichiers réel
 afin d'être stables en CI.
 """
+
 import pandas as pd
 from pathlib import Path
 
