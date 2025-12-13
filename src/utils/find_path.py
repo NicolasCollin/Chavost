@@ -10,7 +10,7 @@ from pathlib import Path
 import json
 import platform
 
-chemin_fichier_json = "src/utils/chemins.json"
+chemin_fichier_json = "secrets/chemins.json"
 
 
 def charger_chemins():
