@@ -13,7 +13,9 @@ RAW_DATASETS_KEY = "RAW_DATASETS"
 # On l'enveloppe toujours dans Path pour avoir .exists(), .is_dir(), etc.
 _data_folder = chemin_fichier()
 if _data_folder is None:
-    raise FileNotFoundError("chemin_fichier() n'a retourné aucun dossier")  # évite Path(None)
+    raise FileNotFoundError(
+        "chemin_fichier() n'a retourné aucun dossier"
+    )  # évite Path(None)
 DATA_FOLDER = Path(_data_folder)
 
 # --- Fichiers attendus dans ce dossier ---
@@ -90,7 +92,9 @@ def check_data() -> None:
                 with st.expander("Détails des erreurs de lecture"):
                     for name, err in errors.items():
                         st.write(f"**{name}**")
-                        st.exception(err)  # variable différente de l'exception ci-dessus
+                        st.exception(
+                            err
+                        )  # variable différente de l'exception ci-dessus
 
             if not raw_dfs:
                 st.error(

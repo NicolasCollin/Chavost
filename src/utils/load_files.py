@@ -56,7 +56,9 @@ def find_folder(folder_name: str) -> str | None:
     return None
 
 
-def dossier_valide(folder_path: str, expected_files: list[str] | None) -> bool:  # expected_files peut être None  # typage correct
+def dossier_valide(
+    folder_path: str, expected_files: list[str] | None
+) -> bool:  # expected_files peut être None  # typage correct
     """Vérifie que le dossier existe ET contient tous les fichiers attendus (rapide)."""
     p = Path(folder_path)
 
@@ -130,7 +132,9 @@ EXPECTED_FILES = [
 ]
 _data_folder = chemin_fichier("test_export", EXPECTED_FILES)
 if _data_folder is None:
-    raise FileNotFoundError("test_export folder not found")  # évite Path(None)  # erreur explicite
+    raise FileNotFoundError(
+        "test_export folder not found"
+    )  # évite Path(None)  # erreur explicite
 DATA_FOLDER = Path(_data_folder)
 
 
