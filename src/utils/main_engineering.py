@@ -13,7 +13,11 @@ RAW_DATASETS_KEY = "RAW_DATASETS"
 # On l'enveloppe toujours dans Path pour avoir .exists(), .is_dir(), etc.
 _data_folder = chemin_fichier()
 # Ne pas lever d'erreur à l'import : nécessaire pour la CI et les tests
-DATA_FOLDER = Path(_data_folder) if _data_folder is not None else Path("__DOSSIER_DONNEES_INTRouvable__")
+DATA_FOLDER = (
+    Path(_data_folder)
+    if _data_folder is not None
+    else Path("__DOSSIER_DONNEES_INTRouvable__")
+)
 
 # --- Fichiers attendus dans ce dossier ---
 EXPECTED_FILES = [
