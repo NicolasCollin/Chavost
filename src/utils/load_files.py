@@ -9,7 +9,7 @@ import os
 import json
 import platform
 
-chemin_fichier_json = "src/utils/chemins.json"
+chemin_fichier_json = "secrets/chemins.json"
 
 
 def charger_chemins():
@@ -19,7 +19,7 @@ def charger_chemins():
             try:
                 return json.load(f)
             except json.JSONDecodeError:
-                return []  # Si le fichier est vide ou corrompu
+                return []  # Si le JSON est corrompu, on repart sur un cache vide  # plus sûr
     return []
 
 
@@ -37,7 +37,7 @@ def find_folder(folder_name: str) -> str | None:
 
     system = platform.system()
 
-    # 👉 Point de départ en fonction du système
+    # Point de départ en fonction du système
     if system == "Windows":
         # ex : C:/Users/<name>
         start_paths = [f"{drive}:/Users/" for drive in "C"]
@@ -56,7 +56,7 @@ def find_folder(folder_name: str) -> str | None:
     return None
 
 
-def dossier_valide(folder_path: str, expected_files: list[str]) -> bool:
+def dossier_valide(folder_path: str, expected_files: list[str] | None) -> bool:  # expected_files peut être None  # typage correct
     """Vérifie que le dossier existe ET contient tous les fichiers attendus (rapide)."""
     p = Path(folder_path)
 
@@ -69,7 +69,7 @@ def dossier_valide(folder_path: str, expected_files: list[str]) -> bool:
 
     # si aucun fichier attendu, juste l'existence du dossier suffit
     if not expected_files:
-        return True
+        return True  # None signifie aucune contrainte sur les fichiers  # typage sûr
 
     # 1 seul accès disque: on récupère les noms présents dans le dossier
     try:
@@ -128,7 +128,10 @@ EXPECTED_FILES = [
     "histo_clients.xls",
     "mouv_stock.xls",
 ]
-DATA_FOLDER = Path(chemin_fichier("test_export", EXPECTED_FILES))
+_data_folder = chemin_fichier("test_export", EXPECTED_FILES)
+if _data_folder is None:
+    raise FileNotFoundError("test_export folder not found")  # évite Path(None)  # erreur explicite
+DATA_FOLDER = Path(_data_folder)
 
 
 def take_all_file():

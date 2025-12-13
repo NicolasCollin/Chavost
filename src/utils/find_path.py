@@ -38,7 +38,7 @@ def find_folder(folder_name: str) -> str | None:
 
     system = platform.system()
 
-    # 👉 Point de départ en fonction du système
+    # Point de départ en fonction du système
     if system == "Windows":
         # ex : C:/Users/<name>
         start_paths = [f"{drive}:/Users/" for drive in "C"]
