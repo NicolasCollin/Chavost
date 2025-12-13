@@ -132,12 +132,18 @@ EXPECTED_FILES = [
 ]
 _data_folder = chemin_fichier("test_export", EXPECTED_FILES)
 # Ne pas lever d'erreur à l'import : nécessaire pour la CI et les tests
-DATA_FOLDER = Path(_data_folder) if _data_folder is not None else Path("__TEST_EXPORT_INTRouvable__")
+DATA_FOLDER = (
+    Path(_data_folder)
+    if _data_folder is not None
+    else Path("__TEST_EXPORT_INTRouvable__")
+)
 
 
 def take_all_file():
     if _data_folder is None:
-        raise FileNotFoundError("test_export folder not found")  # levée uniquement à l'exécution
+        raise FileNotFoundError(
+            "test_export folder not found"
+        )  # levée uniquement à l'exécution
     dict_data: Dict[str, pd.DataFrame] = {}
     # Charger les fichiers attendus en mémoire et
     for fname in EXPECTED_FILES:
