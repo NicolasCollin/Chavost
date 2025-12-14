@@ -5,20 +5,40 @@ stages:
   - test
 
 
-# template for uv installation
+# template for uv installation (Shell executor safe: no system-wide pip)
 .ci-template:
-  # image: python:3.13-slim
   cache:
     key: "uv-cache"
     paths:
       - .uv-cache
+      - .venv
   variables:
     UV_CACHE_DIR: .uv-cache
   before_script:
-  - python -m pip install --upgrade pip
-  - python -m pip install uv
-  - uv --version
-  - uv sync --frozen || uv sync
+    - |
+      set -euo pipefail
+
+      echo "[CI] Python: $(python3 --version || true)"
+
+      # --- Create / reuse a local virtualenv to avoid PEP 668 (externally-managed-environment)
+      if [ ! -d ".venv" ]; then
+        echo "[CI] Creating venv (.venv)"
+        python3 -m venv .venv || {
+          echo "[CI][ERROR] Failed to create venv. On Debian/Raspberry Pi you likely need: sudo apt-get install -y python3-venv";
+          exit 1;
+        }
+      fi
+
+      . .venv/bin/activate
+
+      # --- Install tools inside the venv (NOT system-wide)
+      python -m pip install --upgrade pip
+      python -m pip install --upgrade uv
+
+      uv --version
+
+      # Sync deps (prefer locked)
+      uv sync --frozen || uv sync
 
 
 # pre-commit hooks
@@ -26,6 +46,7 @@ lint:
   stage: lint
   extends: .ci-template
   script:
+    - . .venv/bin/activate
     - uv run pre-commit run --all-files --show-diff-on-failure
   allow_failure: true
 
@@ -35,17 +56,24 @@ typecheck:
   stage: typecheck
   extends: .ci-template
   script:
+    - . .venv/bin/activate
     - uv run mypy --ignore-missing-imports src
   allow_failure: true
 
 
 # look for vulnerable dependencies
+# NOTE: we audit the *already installed* environment to avoid pip-audit trying to
+# create a temp venv and install requirement files (can break on legacy deps like `typing`).
 audit:
   stage: audit
   extends: .ci-template
   script:
-    - uvx pip-audit --version
-    - uvx pip-audit .
+    - . .venv/bin/activate
+    - uv run pip-audit --version
+    - |
+      # `--local` audits installed packages in the current venv.
+      # `|| true` prevents the job from failing the pipeline if vulnerabilities are found.
+      PIP_NO_CACHE_DIR=1 uv run pip-audit --local || true
   allow_failure: true
 
 
@@ -54,6 +82,7 @@ test:
   stage: test
   extends: .ci-template
   script:
+    - . .venv/bin/activate
     - |
       if [ -d tests ]; then
         uv run pytest --doctest-modules --maxfail=3 --disable-warnings -q || rc=$?

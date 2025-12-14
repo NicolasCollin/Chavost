@@ -171,8 +171,8 @@ def _coerce_and_validate(df: pd.DataFrame) -> pd.DataFrame:
 
     # Champs dérivés
     df["annee_str"] = df["annee"].astype("Int64").astype(str)
-    if "client_name" in df.columns:
-        df["client"] = df["client_name"].astype(str)
+    if "nom_client" in df.columns:
+        df["client"] = df["nom_client"].astype(str)
     else:
         df["client"] = df["vecteur_id"]
     df["prix_total"] = df["prix"]  # métrique métier = prix total
@@ -194,10 +194,10 @@ def _resolve_client(
     qlow = q.lower()
 
     # Build name map (supports future client_name)
-    has_names = "client_name" in df.columns
+    has_names = "nom_client" in df.columns
     ids = df["vecteur_id"].astype(str)
     if has_names:
-        names = df["client_name"].astype(str)
+        names = df["nom_client"].astype(str)
         label_series = names
     else:
         # Fallback label = id
@@ -222,7 +222,7 @@ def _resolve_client(
     )
     cand = df.loc[mask, ["vecteur_id"]].copy()
     if has_names:
-        cand["label"] = df.loc[mask, "client_name"].astype(str)
+        cand["label"] = df.loc[mask, "nom_client"].astype(str)
     else:
         cand["label"] = cand["vecteur_id"].astype(str)
     cand = cand.drop_duplicates()
@@ -799,9 +799,9 @@ def render_tools(df: pd.DataFrame, active_tool: str):
         )
 
         q = st.text_input(
-            "Nom ou identifiant client",
+            "Nom du client",
             key="client_query",
-            placeholder="Exemples : 1, 12, 305, Dupont…",
+            placeholder="Exemples : Dupont, Michel...",
         )
 
         vid, label, many = _resolve_client(df, q)
@@ -822,6 +822,7 @@ def render_tools(df: pd.DataFrame, active_tool: str):
 
         # --- Historique & KPIs (filter by vecteur_id ONLY) ---
         sdf = df.loc[df["vecteur_id"].astype(str) == str(vid)].copy()
+
         if sdf.empty:
             st.info(
                 "Aucun historique pour ce client. Vous pouvez **ajouter une vente** ci‑dessous."
@@ -1033,7 +1034,7 @@ def render_tools(df: pd.DataFrame, active_tool: str):
             try:
                 base_df = get_data().copy()
                 base_df.columns = [c.strip().lower() for c in base_df.columns]
-                has_client_name_col = "client_name" in base_df.columns
+                has_client_name_col = "nom_client" in base_df.columns
 
                 rows_to_add = []
                 for _, r in edited.iterrows():
@@ -1055,7 +1056,7 @@ def render_tools(df: pd.DataFrame, active_tool: str):
                         "country": str(r.get("country", "")).strip(),
                     }
                     if has_client_name_col:
-                        new_row["client_name"] = str(r.get("client_input", "")).strip()
+                        new_row["nom_client"] = str(r.get("client_input", "")).strip()
                     for c in [
                         "annee",
                         "type_produit",
