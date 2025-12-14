@@ -1,9 +1,9 @@
 import pandas as pd
 import streamlit as st
 from pathlib import Path
-from typing import Any
 
-from src.utils.find_path import chemin_fichier
+from src.utils.load_files import chemin_fichier, load_csv_safely
+
 
 # --- Constante de session : toutes les bases brutes ---
 RAW_DATASETS_KEY = "RAW_DATASETS"
@@ -11,7 +11,14 @@ RAW_DATASETS_KEY = "RAW_DATASETS"
 # --- Dossier local contenant les fichiers Excel ---
 # chemin_fichier() doit retourner un chemin (str ou Path) vers le dossier contenant les .xls
 # On l'enveloppe toujours dans Path pour avoir .exists(), .is_dir(), etc.
-_data_folder = chemin_fichier()
+list_expected_files = [
+    "article_precis_avec_code.xls",
+    "base_commande.xls",
+    "client_prospect.xls",
+    "histo_clients.xls",
+    "mouv_stock.xls",
+]
+_data_folder = chemin_fichier("test_export", list_expected_files)
 # Ne pas lever d'erreur à l'import : nécessaire pour la CI et les tests
 DATA_FOLDER = (
     Path(_data_folder)
@@ -27,19 +34,6 @@ EXPECTED_FILES = [
     "histo_clients.xls",
     "mouv_stock.xls",
 ]
-
-
-def load_csv_safely(path_or_buf: Any) -> pd.DataFrame:
-    """Charge de manière robuste un fichier Excel ou CSV."""
-    name = getattr(path_or_buf, "name", "")
-    path_str = str(path_or_buf)
-
-    # Excel prioritaire
-    if (
-        isinstance(path_or_buf, (str, Path))
-        and path_str.lower().endswith((".xls", ".xlsx"))
-    ) or name.lower().endswith((".xls", ".xlsx")):
-        return pd.read_excel(path_or_buf)
 
 
 def check_data() -> None:

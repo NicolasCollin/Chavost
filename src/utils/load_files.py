@@ -1,15 +1,27 @@
 import pandas as pd
 from pathlib import Path
 from typing import Dict
+from typing import Any
 
-
-from src.utils.main_engineering import load_csv_safely
 
 import os
 import json
 import platform
 
 chemin_fichier_json = "secrets/chemins.json"
+
+
+def load_csv_safely(path_or_buf: Any) -> pd.DataFrame:
+    """Charge de manière robuste un fichier Excel ou CSV."""
+    name = getattr(path_or_buf, "name", "")
+    path_str = str(path_or_buf)
+
+    # Excel prioritaire
+    if (
+        isinstance(path_or_buf, (str, Path))
+        and path_str.lower().endswith((".xls", ".xlsx"))
+    ) or name.lower().endswith((".xls", ".xlsx")):
+        return pd.read_excel(path_or_buf)
 
 
 def charger_chemins():

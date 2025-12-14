@@ -14,7 +14,7 @@ import pandas as pd
 from pathlib import Path
 
 from src.utils.load_files import dossier_valide, chemin_fichier
-from src.utils.main_engineering import load_csv_safely
+from src.utils.load_files import load_csv_safely
 
 
 class TestDossierValide:
