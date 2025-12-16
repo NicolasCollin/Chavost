@@ -1,10 +1,17 @@
 import streamlit as st
 
 
-def render_kpis(sel_clients, c1, c2, c3, c4,
-               sql_nb_commande_df, sql_tot_paye_df,
-               sql_produit_distincs_df, sql_nb_tot_prod_df):
-
+def render_kpis(
+    sel_clients,
+    c1,
+    c2,
+    c3,
+    c4,
+    sql_nb_commande_df,
+    sql_tot_paye_df,
+    sql_produit_distincs_df,
+    sql_nb_tot_prod_df,
+):
     if len(sel_clients) >= 2:
         with c1:
             st.write("Nombre de commandes passées")
