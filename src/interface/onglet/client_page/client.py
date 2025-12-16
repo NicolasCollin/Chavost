@@ -1,12 +1,12 @@
 import streamlit as st
 from src.utils.engineering import df_clients, df_commande, df_stock
 
-from src.interface.onglet.client.features.db import make_con, register_tables
-from src.interface.onglet.client.features.prepare import (
+from src.interface.onglet.client_page.features.db import make_con, register_tables
+from src.interface.onglet.client_page.features.prepare import (
     prepare_client_filters,
     build_df_full,
 )
-from src.interface.onglet.client.features.queries import (
+from src.interface.onglet.client_page.features.queries import (
     query_nb_commande,
     query_tot_paye,
     query_produit_distincs,
@@ -14,15 +14,19 @@ from src.interface.onglet.client.features.queries import (
     query_suivi_temp,
     query_top_achat,
 )
-from src.interface.onglet.client.features.viz import (
+from src.interface.onglet.client_page.features.viz import (
     build_fig_suivi,
     build_fig_top_achat,
 )
-from src.interface.onglet.client.features.render import render_kpis
+from src.interface.onglet.client_page.features.render import render_kpis
 
 
-def client_tool(df, df_sto, df_com):
+def client_tool():
     con = make_con()
+    
+    df = df_clients()
+    df_sto = df_stock()
+    df_com = df_commande()
 
     st.markdown("---")
     st.title("👥 Explorateur de client")

@@ -7,7 +7,7 @@ import streamlit as st
 
 from src.utils.main_engineering import check_data
 from src.interface.onglet.home import render_home
-from src.interface.onglet.client import client_tool
+from src.interface.onglet.client_page.client import client_tool
 
 # =============================================================================
 # Page metadata / Theme
