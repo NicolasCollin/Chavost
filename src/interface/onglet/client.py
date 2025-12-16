@@ -1,6 +1,8 @@
 import streamlit as st
 from src.utils.engineering import df_clients, df_commande, df_stock
 import duckdb
+import plotly.express as px
+import pandas as pd
 
 
 def client_tool():
@@ -106,7 +108,7 @@ Bienvenue sur **L'explorateur de clients** de Chavost.
                 val = sql_nb_commande_df["nb_comm"]
                 c1.metric("Nombre de commandes passées par le client", val)
             with c2:
-                val = sql_tot_paye_df["tot_paye"]
+                val = sql_tot_paye_df["tot_paye"].round(2)
                 c2.metric("Total payé par le client (en €)", val)
             with c3:
                 val = sql_produit_distincs_df["prod_diff"]
@@ -117,6 +119,46 @@ Bienvenue sur **L'explorateur de clients** de Chavost.
 
         # Pour bosser n affiche ca
         # st.dataframe(df_stock_filtred,hide_index=True)
+        st.markdown("## Suivi temporel des ventes par clients")
+        # Je veux déjà un df avec comme colonne, le nom du client, la quantité achaté par date de facture
+
+        sql_suivi_temp = """
+        select
+            nom_du_client as nom,
+            sum(-quantit_) as quantite,
+            mois_annee
+        from stock_select
+        group by mois_annee, nom_du_client
+        order by mois_annee
+        """
+
+        sql_suivi_temp_df = con.execute(sql_suivi_temp).df()
+        # Réalsation du graphique.
+
+        df = sql_suivi_temp_df.copy()
+
+        # Création de toutes les combinaisons client x mois
+        idx = pd.MultiIndex.from_product(
+            [df["nom"].unique(), df["mois_annee"].unique()], names=["nom", "mois_annee"]
+        )
+
+        df_full = df.set_index(["nom", "mois_annee"]).reindex(idx).reset_index()
+
+        # 👉 Ici : absence de commande = 0 bouteille
+        df_full["quantite"] = df_full["quantite"].fillna(0)
+
+        # Visualisation
+        fig_suivi = px.line(
+            df_full,
+            x="mois_annee",
+            y="quantite",
+            color="nom",
+            markers=True,
+            title="Suivi temporel du nombre de bouteilles vendues par client",
+        )
+        st.plotly_chart(fig_suivi, use_container_width=True)
+
+        # st.dataframe(sql_suivi_temp_df,hide_index=True)
 
         st.markdown("---")
         st.write("La partie du tableau concernant le ou les clients choisis")
