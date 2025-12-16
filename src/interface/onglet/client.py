@@ -2,13 +2,9 @@ import streamlit as st
 from src.utils.engineering import df_clients, df_commande, df_stock
 import duckdb
 
-con = duckdb.connect(database=":memory:")
-con.register("commandes", df_commande())
-con.register("clients", df_clients())
-con.register("stock", df_stock())
-
 
 def client_tool():
+    con = duckdb.connect(database=":memory:")
     st.markdown("---")
     st.title("👥 Explorateur de client")
     st.markdown(
