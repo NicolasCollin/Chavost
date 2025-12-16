@@ -5,7 +5,7 @@ import plotly.express as px
 import pandas as pd
 
 
-def client_tool():
+def client_tool(df, df_sto, df_com):
     con = duckdb.connect(database=":memory:")
     st.markdown("---")
     st.title("👥 Explorateur de client")
@@ -15,9 +15,6 @@ Bienvenue sur **L'explorateur de clients** de Chavost.
 **Dans cette partie** vous allez pouvoir extraire **toutes** les informations possible relatives aux clients qui ont acheté.
 """
     )
-    df = df_clients()
-    df_sto = df_stock()
-    df_com = df_commande()
 
     # ✅ Barre de recherche "intelligente" (autocomplete)
     clients_all = (
@@ -158,16 +155,40 @@ Bienvenue sur **L'explorateur de clients** de Chavost.
         )
         st.plotly_chart(fig_suivi, use_container_width=True)
 
-        # st.dataframe(sql_suivi_temp_df,hide_index=True)
+        st.markdown("## Visualisation des top ventes parclients")
+
+        # Création de la base de données
+        sql_top_achat = """
+        select
+            article,
+            sum(-quantit_) as quantite_tot,
+            nom_du_client as nom
+        from stock_select
+        group by article, nom
+        order by nom
+        """
+
+        sql_top_achat_df = con.execute(sql_top_achat).df()
+        # st.dataframe(sql_top_achat_df, hide_index=True)
+
+        fig_top_achat = px.bar(
+            sql_top_achat_df,
+            x="nom",
+            y="quantite_tot",
+            color="article",
+            title="Ensemble des achats effectués par client",
+            barmode="group",
+        )
+        st.plotly_chart(fig_top_achat)
 
         st.markdown("---")
         st.write("La partie du tableau concernant le ou les clients choisis")
         st.dataframe(df_filtre, use_container_width=True)
     else:
         st.info(
-            "Vuillez entrez un ou plusieurs noms dans la bare de recherche (4 maximum pour des soucis de lisibilité)"
+            "Veuillez entrez un ou plusieurs noms dans la bare de recherche (4 maximum pour des soucis de lisibilité)"
         )
 
 
 if __name__ == "__main__":
-    client_tool()
+    client_tool(df_clients(), df_stock(), df_commande())
