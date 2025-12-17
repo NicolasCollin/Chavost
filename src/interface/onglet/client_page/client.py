@@ -23,7 +23,7 @@ from src.interface.onglet.client_page.features.render import render_kpis
 
 def client_tool():
     con = make_con()
-    
+
     df = df_clients()
     df_sto = df_stock()
     df_com = df_commande()
