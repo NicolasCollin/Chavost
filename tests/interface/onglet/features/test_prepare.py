@@ -36,7 +36,11 @@ class TestPrepareClientFilters:
         df_com = pd.DataFrame(
             {
                 "nom_du_client": ["A", "A", "C"],
-                "n_document": [100, 200, 999],  # 200 n'existe pas dans df_sto => stock manquant attendu
+                "n_document": [
+                    100,
+                    200,
+                    999,
+                ],  # 200 n'existe pas dans df_sto => stock manquant attendu
                 "montant": [10.0, 20.0, 30.0],
             }
         )
@@ -93,14 +97,22 @@ class TestBuildDfFull:
         assert len(df_full) == 4
 
         # Combinaison manquante (B, 2025-02) => quantite=0
-        missing = df_full[(df_full["nom"] == "B") & (df_full["mois_annee"] == "2025-02")]
+        missing = df_full[
+            (df_full["nom"] == "B") & (df_full["mois_annee"] == "2025-02")
+        ]
         assert len(missing) == 1
         assert missing.iloc[0]["quantite"] == 0
 
         # Valeurs existantes préservées
-        a_2025_01 = df_full[(df_full["nom"] == "A") & (df_full["mois_annee"] == "2025-01")]
-        a_2025_02 = df_full[(df_full["nom"] == "A") & (df_full["mois_annee"] == "2025-02")]
-        b_2025_01 = df_full[(df_full["nom"] == "B") & (df_full["mois_annee"] == "2025-01")]
+        a_2025_01 = df_full[
+            (df_full["nom"] == "A") & (df_full["mois_annee"] == "2025-01")
+        ]
+        a_2025_02 = df_full[
+            (df_full["nom"] == "A") & (df_full["mois_annee"] == "2025-02")
+        ]
+        b_2025_01 = df_full[
+            (df_full["nom"] == "B") & (df_full["mois_annee"] == "2025-01")
+        ]
 
         assert a_2025_01.iloc[0]["quantite"] == 5
         assert a_2025_02.iloc[0]["quantite"] == 2
