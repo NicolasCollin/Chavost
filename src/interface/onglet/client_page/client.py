@@ -109,4 +109,4 @@ Bienvenue sur **L'explorateur de clients** de Chavost.
 
 
 if __name__ == "__main__":
-    client_tool(df_clients(), df_stock(), df_commande())
+    client_tool()  # Run the Streamlit client explorer entrypoint
