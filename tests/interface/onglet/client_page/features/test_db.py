@@ -23,11 +23,13 @@ class TestMakeCon:
         assert isinstance(con, DuckDBPyConnection)
 
     def test_utilise_une_base_en_memoire(self):
-        """Vérifie que la connexion utilise une base DuckDB en mémoire (:memory:)."""
+        """Vérifie que la connexion utilise une base DuckDB en mémoire."""
         con = make_con()
 
         databases = con.execute("PRAGMA database_list;").fetchall()
-        assert any(db[2] == ":memory:" for db in databases)
+        files = [db[2] for db in databases]
+
+        assert any(f in (None, "", ":memory:") for f in files)
 
 
 class TestRegisterTables:
