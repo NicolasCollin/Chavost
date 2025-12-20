@@ -64,6 +64,7 @@ Bienvenue sur **L'explorateur de clients** de Chavost.
 
         st.markdown("## Résumé chiffré des commandes")
         con = register_tables(con, df_com_filtre, df_filtre, df_stock_filtred)
+
         with st.container(border=True):
             c1, c2, c3, c4 = st.columns(4)
 
@@ -113,35 +114,92 @@ Bienvenue sur **L'explorateur de clients** de Chavost.
         if len(sel_clients) == 1:
             st.markdown("## Reherche des commandes par dates")
 
+            # Ici on
             df_dates = df_stock_filtred.drop(
                 columns=["r_f_rence", "code_emplacement", "date_limite"]
             ).dropna()
+            df_dates_com = df_com.copy()
+            df_dates_com["date"] = df_dates_com["date"].dt.date
             df_dates["date_y"] = df_dates["date_y"].dt.date
+
             dates_all = (
                 df_dates["date_y"].sort_values(ascending=False).unique().tolist()
             )
+
             sel_date = st.multiselect(
                 "Rechercher une date de commande",
                 options=dates_all,
                 default=[],
                 help="Tapez quelques lettres : des suggestions apparaissent automatiquement. Laissez vide pour tous les clients.",
             )
-
+            df_com_filtre = df_com_filtre[df_com_filtre["date"].isin(sel_date)]
             df_order_client_by_dates = df_dates[df_dates["date_y"].isin(sel_date)]
             # LEs infos principale de la commande
-            with st.container(border=True):
-                st.info("Ici ca sera le résumé globales des commandes séléctionnées")
+            if sel_date:
+                with st.container(border=False):
+                    if len(sel_date) == 1:
+                        c1, c2, c3 = st.columns(3)
 
-            # LEs infos totales de la commande ou des commandes
-            st.dataframe(df_order_client_by_dates)
-            with st.expander("Affiché les détails", expanded=False):
-                st.info(
-                    "il y aura ici les informations relatives au commandes en totalité et s'il y a plusieurs commandes alors j'afficherais un graphique pour les comparer"
+                        c1.metric(
+                            "Total commande",
+                            f"""{df_order_client_by_dates['valeur_du_mouvement']
+                                .sum():,.2f}€
+                                """,
+                        )
+                        c2.metric(
+                            "Nomrbre de bouteilles",
+                            f"""{-df_order_client_by_dates['quantit_']
+                                .sum():,.2f}
+                                """,
+                        )
+                        c3.metric(
+                            "Produits distincts",
+                            f"""{len(df_order_client_by_dates['article']
+                                .unique().tolist()):,.2f}
+                                """,
+                        )
+                    else:
+                        c1, c2, c3, c4 = st.columns(4)
+                        c1.metric(
+                            "Total commande",
+                            f"""{df_order_client_by_dates['valeur_du_mouvement']
+                                .sum():,.2f}€
+                                """,
+                        )
+                        c2.metric(
+                            "Nomrbre de bouteilles",
+                            f"""{-df_order_client_by_dates['quantit_']
+                                .sum():,.2f}
+                                """,
+                        )
+                        c3.metric(
+                            "Produits distincts",
+                            f"""{len(df_order_client_by_dates['article']
+                                .unique().tolist()):,.2f}
+                                """,
+                        )
+                        c4.metric(
+                            "Nombre de commandes",
+                            f"""{len(df_order_client_by_dates['date_y']
+                                .unique().tolist()):,.2f}
+                                """,
+                        )
+                    with st.expander(
+                        "📦 Affiché les détails des produits achetés", expanded=False
+                    ):
+                        q1, q2 = st.columns(2)
+                        with q1:
+                            st.info(
+                                "ici on va mettre un tableau avec chaque article achaté"
+                            )
+                # LEs infos totales de la commande ou des commandes
+                st.dataframe(
+                    df_stock_filtred[df_stock_filtred["n_document"] == "BL20250081"]
                 )
 
         st.markdown("---")
         st.write("La partie du tableau concernant le ou les clients choisis")
-        st.dataframe(df_filtre, use_container_width=True)
+        st.dataframe(df_order_client_by_dates, use_container_width=True)
 
     else:
         st.info(

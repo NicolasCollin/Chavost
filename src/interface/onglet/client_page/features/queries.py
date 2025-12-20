@@ -43,7 +43,7 @@ def query_produit_distincs(con):
 def query_nb_tot_prod(con):
     sql_nb_tot_prod = """
     select
-        sum(-quantit_) as nombre_produits,
+        count(article) as nombre_produits,
         nom_du_client as nom
     from
         stock_select

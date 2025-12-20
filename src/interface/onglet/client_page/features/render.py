@@ -1,4 +1,5 @@
 import streamlit as st
+import pandas as pd
 
 
 def render_kpis(
@@ -42,3 +43,65 @@ def render_kpis(
         with c4:
             val = float(sql_nb_tot_prod_df["nombre_produits"].iloc[0])
             c4.metric("Nombre total de produit achaté", val)
+
+
+def render_table_html(df: pd.DataFrame) -> str:
+    rows = []
+    for _, r in df.iterrows():
+        rows.append(f"""
+        <tr>
+            <td class="col-name">{r['article']}</td>
+            <td class="col-num">{int(r['quantit_'])}</td>
+            <td class="col-num">{float(r['prix_unitaire']):,.2f} €</td>
+            <td class="col-num"><strong>{float(r['total']):,.2f} €</strong></td>
+        </tr>
+        """)
+
+    rows_html = "\n".join(rows)
+
+    return f"""
+    <style>
+        table.custom-table {{
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 15px;
+        }}
+        table.custom-table thead th {{
+            text-align: left;
+            padding: 10px 12px;
+            border-bottom: 2px solid #dcdcdc;
+            font-weight: 600;
+        }}
+        table.custom-table tbody td {{
+            padding: 10px 12px;
+            border-bottom: 1px solid #eeeeee;
+        }}
+
+        .col-name {{ text-align: left; }}
+        .col-num  {{ text-align: right; white-space: nowrap; }}
+
+        /* 1 ligne sur 2 grisée */
+        table.custom-table tbody tr:nth-child(even) {{
+            background-color: #f7f7f7;
+        }}
+
+        /* hover doux */
+        table.custom-table tbody tr:hover {{
+            background-color: #eef3ff;
+        }}
+    </style>
+
+    <table class="custom-table">
+        <thead>
+            <tr>
+                <th>Produit</th>
+                <th>Qté</th>
+                <th>Prix unitaire</th>
+                <th>Total</th>
+            </tr>
+        </thead>
+        <tbody>
+            {rows_html}
+        </tbody>
+    </table>
+    """

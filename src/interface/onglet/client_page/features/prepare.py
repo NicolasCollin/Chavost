@@ -10,7 +10,7 @@ def prepare_client_filters(df, df_sto, df_com, sel_clients):
     """
     df_filtre = df[df["nom_du_client"].astype(str).isin(sel_clients)].copy()
     df_com_filtre = df_com[df_com["nom_du_client"].isin(sel_clients)]
-    df_stock_filtred = df_com_filtre.merge(df_sto, on="n_document", how="left")
+    df_stock_filtred = df_sto.merge(df_com_filtre, on="n_document", how="left")
     return df_filtre, df_com_filtre, df_stock_filtred
 
 
