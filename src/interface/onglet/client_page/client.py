@@ -23,7 +23,7 @@ from src.interface.onglet.client_page.features.render import render_kpis
 
 def client_tool():
     con = make_con()
-    
+
     df = df_clients()
     df_sto = df_stock()
     df_com = df_commande()
@@ -50,53 +50,94 @@ Bienvenue sur **L'explorateur de clients** de Chavost.
     )
 
     if sel_clients:
+        ##On affixche premièremen les informations importantes
+        if len(sel_clients) == 1:
+            st.markdown("## Informations du client")
+            with st.expander("Afficher les informations des clients"):
+                st.info(
+                    "ici se trouvbera les informations relartives aux clients comme l'adresse , le pays etc, il y aura un menou déroulant des clients et il faudra cliquer pour avoir un certain client"
+                )
         # On enregistre les bases de données en sql et on applique le filtre
         df_filtre, df_com_filtre, df_stock_filtred = prepare_client_filters(
             df, df_sto, df_com, sel_clients
         )
 
+        st.markdown("## Résumé chiffré des commandes")
         con = register_tables(con, df_com_filtre, df_filtre, df_stock_filtred)
+        with st.container(border=True):
+            c1, c2, c3, c4 = st.columns(4)
 
-        c1, c2, c3, c4 = st.columns(4)
+            # total de commandes
+            sql_nb_commande_df = query_nb_commande(con)
 
-        # total de commandes
-        sql_nb_commande_df = query_nb_commande(con)
+            # total payé
+            sql_tot_paye_df = query_tot_paye(con)
 
-        # total payé
-        sql_tot_paye_df = query_tot_paye(con)
+            # Nombre de produit différents achetés
+            sql_produit_distincs_df = query_produit_distincs(con)
 
-        # Nombre de produit différents achetés
-        sql_produit_distincs_df = query_produit_distincs(con)
+            # Nombre de produit total
+            sql_nb_tot_prod_df = query_nb_tot_prod(con)
 
-        # Nombre de produit total
-        sql_nb_tot_prod_df = query_nb_tot_prod(con)
+            render_kpis(
+                sel_clients,
+                c1,
+                c2,
+                c3,
+                c4,
+                sql_nb_commande_df,
+                sql_tot_paye_df,
+                sql_produit_distincs_df,
+                sql_nb_tot_prod_df,
+            )
 
-        render_kpis(
-            sel_clients,
-            c1,
-            c2,
-            c3,
-            c4,
-            sql_nb_commande_df,
-            sql_tot_paye_df,
-            sql_produit_distincs_df,
-            sql_nb_tot_prod_df,
-        )
-
-        st.markdown("## Suivi temporel des ventes par clients")
+        # st.markdown("## Suivi temporel des ventes par clients")
 
         sql_suivi_temp_df = query_suivi_temp(con)
         df_full = build_df_full(sql_suivi_temp_df)
 
-        fig_suivi = build_fig_suivi(df_full)
-        st.plotly_chart(fig_suivi, use_container_width=True)
+        with st.expander("Suivi temporel des ventes par clients", expanded=True):
+            fig_suivi = build_fig_suivi(df_full)
+            st.plotly_chart(fig_suivi, use_container_width=True)
 
         st.markdown("## Visualisation des top ventes parclients")
 
-        sql_top_achat_df = query_top_achat(con)
+        with st.container(border=True):
+            sql_top_achat_df = query_top_achat(con)
 
-        fig_top_achat = build_fig_top_achat(sql_top_achat_df)
-        st.plotly_chart(fig_top_achat)
+            fig_top_achat = build_fig_top_achat(sql_top_achat_df)
+            st.plotly_chart(fig_top_achat)
+
+        # création de la fonction qui regarde chaque commande
+        st.markdown("---")
+        if len(sel_clients) == 1:
+            st.markdown("## Reherche des commandes par dates")
+
+            df_dates = df_stock_filtred.drop(
+                columns=["r_f_rence", "code_emplacement", "date_limite"]
+            ).dropna()
+            df_dates["date_y"] = df_dates["date_y"].dt.date
+            dates_all = (
+                df_dates["date_y"].sort_values(ascending=False).unique().tolist()
+            )
+            sel_date = st.multiselect(
+                "Rechercher une date de commande",
+                options=dates_all,
+                default=[],
+                help="Tapez quelques lettres : des suggestions apparaissent automatiquement. Laissez vide pour tous les clients.",
+            )
+
+            df_order_client_by_dates = df_dates[df_dates["date_y"].isin(sel_date)]
+            # LEs infos principale de la commande
+            with st.container(border=True):
+                st.info("Ici ca sera le résumé globales des commandes séléctionnées")
+
+            # LEs infos totales de la commande ou des commandes
+            st.dataframe(df_order_client_by_dates)
+            with st.expander("Affiché les détails", expanded=False):
+                st.info(
+                    "il y aura ici les informations relatives au commandes en totalité et s'il y a plusieurs commandes alors j'afficherais un graphique pour les comparer"
+                )
 
         st.markdown("---")
         st.write("La partie du tableau concernant le ou les clients choisis")

@@ -7,6 +7,7 @@ def query_nb_commande(con):
             commandes_select
         where n_document like 'CM%'
         OR n_document LIKE 'FA%'
+        OR n_document LIKE '20%'
         group by nom_du_client
     """
     sql_nb_commande_df = con.execute(sql_nb_commande).df()
