@@ -1,6 +1,12 @@
 import streamlit as st
 
-from src.utils.engineering import df_clients, df_commande, df_stock, df_article
+from src.utils.engineering import (
+    df_clients,
+    df_commande,
+    df_stock,
+    df_article,
+    df_info_client,
+)
 
 from src.interface.onglet.client_page.features.db import make_con, register_tables
 from src.interface.onglet.client_page.features.prepare import (
@@ -34,6 +40,7 @@ def client_tool():
     df_sto = df_stock()
     df_com = df_commande()
     df_art = df_article()
+    df_info = df_info_client()
 
     st.markdown("---")
     st.title("👥 Explorateur de client")
@@ -58,12 +65,25 @@ Bienvenue sur **L'explorateur de clients** de Chavost.
 
     if sel_clients:
         ##On affixche premièremen les informations importantes
-        if len(sel_clients) == 1:
-            st.markdown("**Informations du client**")
-            with st.expander("Afficher les informations des clients"):
-                st.info(
-                    "ici se trouvbera les informations relartives aux clients comme l'adresse , le pays etc, il y aura un menou déroulant des clients et il faudra cliquer pour avoir un certain client"
+
+        st.markdown("**Informations du client**")
+        with st.expander("Afficher les informations des clients"):
+            st.info(
+                "ici se trouvbera les informations relartives aux clients comme l'adresse , le pays etc, il y aura un menou déroulant des clients et il faudra cliquer pour avoir un certain client"
+            )
+            st.markdown("#### Informations personelles clients")
+            # Je mettrai la partie du dessous dans une fonction dans render
+            if len(sel_clients) > 1:
+                client = st.selectbox(
+                    "Sur quel clients vouluez vous des informations", sel_clients
                 )
+            else:
+                client = sel_clients
+
+            df_info_cli = df_info.loc[:, ~df_info.columns.str.startswith("unname")]
+            df_info_cli = df_info_cli[df_info_cli["nom_client"] == client]
+            st.dataframe(df_info_cli, hide_index=True)
+
         # On enregistre les bases de données en sql et on applique le filtre
         df_filtre, df_com_filtre, df_stock_filtred = prepare_client_filters(
             df, df_sto, df_com, sel_clients, df_art
