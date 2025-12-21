@@ -1,5 +1,6 @@
 import plotly.express as px
 import plotly.graph_objects as go
+import textwrap
 
 
 def build_fig_suivi(df_full):
@@ -38,7 +39,14 @@ def build_fig_top_achat(sql_top_achat_df):
     return fig_top_achat
 
 
+def wrap_label(s, width=14):
+    # wrap par largeur de caractères (simple et efficace)
+    return "<br>".join(textwrap.wrap(str(s), width=width))
+
+
 def build_fig_commande(df_use):
+    ticktext_wrapped = [wrap_label(a, width=14) for a in df_use["article"]]
+
     fig_commande = go.Figure()
     fig_commande.add_bar(
         x=df_use["article"],
@@ -54,30 +62,30 @@ def build_fig_commande(df_use):
         line=dict(color="red", width=3),
         yaxis="y2",
     )
+
     fig_commande.update_layout(
         title="Résumé graphique par commandes",
         xaxis=dict(
             tickmode="array",
-            tickvals=df_use["article"],  # valeurs réelles
-            ticktext=df_use["article_short"],
-            tickangle=-25,
+            tickvals=df_use["article"],
+            ticktext=ticktext_wrapped,  # <-- wrap
+            tickangle=0,  # <-- droit
+            tickfont=dict(size=11),
+            automargin=True,  # <-- laisse Plotly gérer la marge
         ),
-        yaxis=dict(
-            title="Quantité",
-        ),
-        yaxis2=dict(
-            title="Prix unitaire (€)",
-            overlaying="y",
-            side="right",
-        ),
+        yaxis=dict(title="Quantité"),
+        yaxis2=dict(title="Prix unitaire (€)", overlaying="y", side="right"),
         legend=dict(
             x=0.98,
-            y=1.18,
+            y=1.12,
             xanchor="right",
             yanchor="top",
-            bgcolor="rgba(255,255,255,0.7)",  # optionnel
-            bordercolor="rgba(0,0,0,0.2)",  # optionnel
+            bgcolor="rgba(255,255,255,0.7)",
+            bordercolor="rgba(0,0,0,0.2)",
             borderwidth=1,
         ),
+        margin=dict(b=110),  # <-- plus de place en bas pour les labels
+        height=520,  # <-- augmente si besoin
     )
+
     return fig_commande

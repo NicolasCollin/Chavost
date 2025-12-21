@@ -59,7 +59,7 @@ Bienvenue sur **L'explorateur de clients** de Chavost.
     if sel_clients:
         ##On affixche premièremen les informations importantes
         if len(sel_clients) == 1:
-            st.markdown("## Informations du client")
+            st.markdown("**Informations du client**")
             with st.expander("Afficher les informations des clients"):
                 st.info(
                     "ici se trouvbera les informations relartives aux clients comme l'adresse , le pays etc, il y aura un menou déroulant des clients et il faudra cliquer pour avoir un certain client"
