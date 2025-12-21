@@ -1,10 +1,10 @@
 import streamlit as st
-from src.utils.engineering import df_clients, df_commande, df_stock
+
+from src.utils.engineering import df_clients, df_commande, df_stock, df_article
 
 from src.interface.onglet.client_page.features.db import make_con, register_tables
 from src.interface.onglet.client_page.features.prepare import (
     prepare_client_filters,
-    build_df_full,
 )
 from src.interface.onglet.client_page.features.queries import (
     query_nb_commande,
@@ -13,12 +13,18 @@ from src.interface.onglet.client_page.features.queries import (
     query_nb_tot_prod,
     query_suivi_temp,
     query_top_achat,
+    query_suivi_temp_year,
 )
 from src.interface.onglet.client_page.features.viz import (
     build_fig_suivi,
     build_fig_top_achat,
+    build_fig_suivi_year,
 )
-from src.interface.onglet.client_page.features.render import render_kpis
+from src.interface.onglet.client_page.features.render import (
+    render_kpis,
+    metric_table_date,
+    render_affichage_commande,
+)
 
 
 def client_tool():
@@ -27,6 +33,7 @@ def client_tool():
     df = df_clients()
     df_sto = df_stock()
     df_com = df_commande()
+    df_art = df_article()
 
     st.markdown("---")
     st.title("👥 Explorateur de client")
@@ -59,7 +66,7 @@ Bienvenue sur **L'explorateur de clients** de Chavost.
                 )
         # On enregistre les bases de données en sql et on applique le filtre
         df_filtre, df_com_filtre, df_stock_filtred = prepare_client_filters(
-            df, df_sto, df_com, sel_clients
+            df, df_sto, df_com, sel_clients, df_art
         )
 
         st.markdown("## Résumé chiffré des commandes")
@@ -95,12 +102,15 @@ Bienvenue sur **L'explorateur de clients** de Chavost.
         # st.markdown("## Suivi temporel des ventes par clients")
 
         sql_suivi_temp_df = query_suivi_temp(con)
-        df_full = build_df_full(sql_suivi_temp_df)
+        df_full = sql_suivi_temp_df
 
-        with st.expander("Suivi temporel des ventes par clients", expanded=True):
+        st.markdown("## Suivi temporel des ventes par clients")
+        with st.container(border=True):
             fig_suivi = build_fig_suivi(df_full)
             st.plotly_chart(fig_suivi, use_container_width=True)
-
+            with st.expander("Visualisation annuelle"):
+                fig_suivi_year = build_fig_suivi_year(query_suivi_temp_year(con))
+                st.plotly_chart(fig_suivi_year, use_container_width=True)
         st.markdown("## Visualisation des top ventes parclients")
 
         with st.container(border=True):
@@ -113,93 +123,35 @@ Bienvenue sur **L'explorateur de clients** de Chavost.
         st.markdown("---")
         if len(sel_clients) == 1:
             st.markdown("## Reherche des commandes par dates")
-
-            # Ici on
-            df_dates = df_stock_filtred.drop(
-                columns=["r_f_rence", "code_emplacement", "date_limite"]
-            ).dropna()
-            df_dates_com = df_com.copy()
-            df_dates_com["date"] = df_dates_com["date"].dt.date
-            df_dates["date_y"] = df_dates["date_y"].dt.date
-
             dates_all = (
-                df_dates["date_y"].sort_values(ascending=False).unique().tolist()
+                df_stock_filtred["date_y"]
+                .sort_values(ascending=False)
+                .unique()
+                .tolist()
             )
-
             sel_date = st.multiselect(
                 "Rechercher une date de commande",
                 options=dates_all,
                 default=[],
                 help="Tapez quelques lettres : des suggestions apparaissent automatiquement. Laissez vide pour tous les clients.",
             )
+            # créationn des bases de donnéés contenant les filtres choisis
             df_com_filtre = df_com_filtre[df_com_filtre["date"].isin(sel_date)]
-            df_order_client_by_dates = df_dates[df_dates["date_y"].isin(sel_date)]
+            df_order_client_by_dates = df_stock_filtred[
+                df_stock_filtred["date_y"].isin(sel_date)
+            ]
+
             # LEs infos principale de la commande
             if sel_date:
                 with st.container(border=False):
-                    if len(sel_date) == 1:
-                        c1, c2, c3 = st.columns(3)
-
-                        c1.metric(
-                            "Total commande",
-                            f"""{df_order_client_by_dates['valeur_du_mouvement']
-                                .sum():,.2f}€
-                                """,
-                        )
-                        c2.metric(
-                            "Nomrbre de bouteilles",
-                            f"""{-df_order_client_by_dates['quantit_']
-                                .sum():,.2f}
-                                """,
-                        )
-                        c3.metric(
-                            "Produits distincts",
-                            f"""{len(df_order_client_by_dates['article']
-                                .unique().tolist()):,.2f}
-                                """,
-                        )
-                    else:
-                        c1, c2, c3, c4 = st.columns(4)
-                        c1.metric(
-                            "Total commande",
-                            f"""{df_order_client_by_dates['valeur_du_mouvement']
-                                .sum():,.2f}€
-                                """,
-                        )
-                        c2.metric(
-                            "Nomrbre de bouteilles",
-                            f"""{-df_order_client_by_dates['quantit_']
-                                .sum():,.2f}
-                                """,
-                        )
-                        c3.metric(
-                            "Produits distincts",
-                            f"""{len(df_order_client_by_dates['article']
-                                .unique().tolist()):,.2f}
-                                """,
-                        )
-                        c4.metric(
-                            "Nombre de commandes",
-                            f"""{len(df_order_client_by_dates['date_y']
-                                .unique().tolist()):,.2f}
-                                """,
-                        )
+                    metric_table_date(df_com_filtre, sel_date, df_order_client_by_dates)
                     with st.expander(
                         "📦 Affiché les détails des produits achetés", expanded=False
                     ):
-                        q1, q2 = st.columns(2)
-                        with q1:
-                            st.info(
-                                "ici on va mettre un tableau avec chaque article achaté"
-                            )
-                # LEs infos totales de la commande ou des commandes
-                st.dataframe(
-                    df_stock_filtred[df_stock_filtred["n_document"] == "BL20250081"]
-                )
-
+                        render_affichage_commande(df_order_client_by_dates)
         st.markdown("---")
         st.write("La partie du tableau concernant le ou les clients choisis")
-        st.dataframe(df_order_client_by_dates, use_container_width=True)
+        st.dataframe(df_stock_filtred, use_container_width=True)
 
     else:
         st.info(

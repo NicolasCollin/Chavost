@@ -1,5 +1,5 @@
 import streamlit as st
-import pandas as pd
+from src.interface.onglet.client_page.features.viz import build_fig_commande
 
 
 def render_kpis(
@@ -33,8 +33,8 @@ def render_kpis(
             c1.metric("Nombre de commandes passées par le client", val)
 
         with c2:
-            val = float(sql_tot_paye_df["tot_paye"].round(2).iloc[0])
-            c2.metric("Total payé par le client (en €)", val)
+            val = float(sql_tot_paye_df["tot_paye"].iloc[0])
+            c2.metric("Total payé par le client (en €)", val.__format__(",.2f"))
 
         with c3:
             val = int(sql_produit_distincs_df["prod_diff"].iloc[0])
@@ -45,63 +45,78 @@ def render_kpis(
             c4.metric("Nombre total de produit achaté", val)
 
 
-def render_table_html(df: pd.DataFrame) -> str:
-    rows = []
-    for _, r in df.iterrows():
-        rows.append(f"""
-        <tr>
-            <td class="col-name">{r['article']}</td>
-            <td class="col-num">{int(r['quantit_'])}</td>
-            <td class="col-num">{float(r['prix_unitaire']):,.2f} €</td>
-            <td class="col-num"><strong>{float(r['total']):,.2f} €</strong></td>
-        </tr>
-        """)
+def metric_table_date(df_com_filtre, sel_date, df_order_client_by_dates):
+    df_filtre_fa_ndoc = df_com_filtre[df_com_filtre["n_document"].str.startswith("FA")]
+    n_doc_liste = df_filtre_fa_ndoc["n_document"].unique().tolist()
+    df_doc_liste = df_filtre_fa_ndoc[df_filtre_fa_ndoc["n_document"].isin(n_doc_liste)]
+    if len(sel_date) == 1:
+        c1, c2, c3, c4 = st.columns(4)
 
-    rows_html = "\n".join(rows)
+        c1.metric(
+            "Valeurs produits",
+            f"""{df_order_client_by_dates['valeur_reelle']
+                .sum():,.2f}€
+                """,
+        )
+        c2.metric(
+            "Nomrbre de bouteilles",
+            f"""{int(-df_order_client_by_dates['quantit_']
+                .sum())}
+                """,
+        )
+        c3.metric(
+            "Produits distincts",
+            f"""{len(df_order_client_by_dates['article']
+                .unique().tolist())}
+                """,
+        )
+        c4.metric(
+            "Prix total",
+            f"""{df_doc_liste['net_payer'].sum():,.2f}€
+                """,
+        )
+    else:
+        c1, c2, c3, c4, c5 = st.columns(5)
+        c1.metric(
+            "Total des commandes",
+            f"""{df_order_client_by_dates['valeur_reelle']
+                .sum():,.2f}€
+                """,
+        )
+        c2.metric(
+            "Nomrbre de bouteilles",
+            f"""{-df_order_client_by_dates['quantit_']
+                .sum():,.2f}
+                """,
+        )
+        c3.metric(
+            "Produits distincts",
+            f"""{len(df_order_client_by_dates['article']
+                .unique().tolist()):,.2f}
+                """,
+        )
+        c4.metric(
+            "Nombre de commandes",
+            f"""{len(df_order_client_by_dates['date_y']
+                .unique().tolist()):,.2f}
+                """,
+        )
+        c5.metric(
+            "Prix total",
+            f"""{df_doc_liste['net_payer'].sum():,.2f}€
+                """,
+        )
 
-    return f"""
-    <style>
-        table.custom-table {{
-            width: 100%;
-            border-collapse: collapse;
-            font-size: 15px;
-        }}
-        table.custom-table thead th {{
-            text-align: left;
-            padding: 10px 12px;
-            border-bottom: 2px solid #dcdcdc;
-            font-weight: 600;
-        }}
-        table.custom-table tbody td {{
-            padding: 10px 12px;
-            border-bottom: 1px solid #eeeeee;
-        }}
 
-        .col-name {{ text-align: left; }}
-        .col-num  {{ text-align: right; white-space: nowrap; }}
-
-        /* 1 ligne sur 2 grisée */
-        table.custom-table tbody tr:nth-child(even) {{
-            background-color: #f7f7f7;
-        }}
-
-        /* hover doux */
-        table.custom-table tbody tr:hover {{
-            background-color: #eef3ff;
-        }}
-    </style>
-
-    <table class="custom-table">
-        <thead>
-            <tr>
-                <th>Produit</th>
-                <th>Qté</th>
-                <th>Prix unitaire</th>
-                <th>Total</th>
-            </tr>
-        </thead>
-        <tbody>
-            {rows_html}
-        </tbody>
-    </table>
-    """
+def render_affichage_commande(df_order_client_by_dates):
+    q1, q2 = st.columns(2)
+    df_use = df_order_client_by_dates[
+        ["article", "quantite_reel", "prix_unitaire", "n_document"]
+    ]
+    df_use["article_short"] = df_use["article"].str.slice(0, 7) + "…"
+    with q1:
+        st.markdown("#### Tableau récapitulatif de la commande")
+        st.dataframe(df_use.drop(columns=["article_short"]), hide_index=True)
+    with q2:
+        fig_commande = build_fig_commande(df_use)
+        st.plotly_chart(fig_commande, use_container_width=True)

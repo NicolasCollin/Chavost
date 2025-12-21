@@ -5,8 +5,7 @@ def query_nb_commande(con):
             nom_du_client as nom
         from
             commandes_select
-        where n_document like 'CM%'
-        OR n_document LIKE 'FA%'
+        where n_document like 'FA%'
         OR n_document LIKE '20%'
         group by nom_du_client
     """
@@ -21,6 +20,8 @@ def query_tot_paye(con):
             nom_du_client as nom
         from
             commandes_select
+        where n_document like 'FA%'
+        OR n_document LIKE '20%'
         group by nom_du_client
     """
     sql_tot_paye_df = con.execute(sql_tot_paye).df()
@@ -43,7 +44,7 @@ def query_produit_distincs(con):
 def query_nb_tot_prod(con):
     sql_nb_tot_prod = """
     select
-        count(article) as nombre_produits,
+        sum(-quantit_) as nombre_produits,
         nom_du_client as nom
     from
         stock_select
@@ -58,13 +59,28 @@ def query_suivi_temp(con):
     select
         nom_du_client as nom,
         sum(-quantit_) as quantite,
+        date_x as date,
         mois_annee
     from stock_select
-    group by mois_annee, nom_du_client
-    order by mois_annee
+    group by date, nom_du_client,mois_annee
+    order by date
     """
     sql_suivi_temp_df = con.execute(sql_suivi_temp).df()
     return sql_suivi_temp_df
+
+
+def query_suivi_temp_year(con):
+    sql_suivi_temp_year = """
+    select
+        nom_du_client as nom,
+        sum(-quantit_) as quantite,
+        annee
+    from stock_select
+    group by annee, nom_du_client
+    order by annee
+    """
+    sql_suivi_temp_year_df = con.execute(sql_suivi_temp_year).df()
+    return sql_suivi_temp_year_df
 
 
 def query_top_achat(con):
