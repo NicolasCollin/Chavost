@@ -104,14 +104,14 @@ Bienvenue sur **L'explorateur de clients** de Chavost.
         sql_suivi_temp_df = query_suivi_temp(con)
         df_full = sql_suivi_temp_df
 
-        st.markdown("## Suivi temporel des ventes par clients")
+        st.markdown("## Suivi temporel des ventes")
         with st.container(border=True):
             fig_suivi = build_fig_suivi(df_full)
             st.plotly_chart(fig_suivi, use_container_width=True)
             with st.expander("Visualisation annuelle"):
                 fig_suivi_year = build_fig_suivi_year(query_suivi_temp_year(con))
                 st.plotly_chart(fig_suivi_year, use_container_width=True)
-        st.markdown("## Visualisation des top ventes parclients")
+        st.markdown("## Visualisation des top ventes")
 
         with st.container(border=True):
             sql_top_achat_df = query_top_achat(con)

@@ -4,6 +4,7 @@ from src.utils.load_files import (
     df_stok_file,
     df_commande_file,
     df_clients_file,
+    df_info_client_file,
 )
 
 
@@ -65,6 +66,19 @@ def df_commande():
 
 def df_clients():
     data = df_clients_file()
+
+    # retravail des noms des colonnes.
+    data.columns = (
+        data.columns.str.strip().str.lower().str.replace(r"[^a-z0-9]+", "_", regex=True)
+    )
+
+    # retravail des types selon les variables
+
+    return data
+
+
+def df_info_client():
+    data = df_info_client_file()
 
     # retravail des noms des colonnes.
     data.columns = (
