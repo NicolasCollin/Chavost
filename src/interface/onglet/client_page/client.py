@@ -68,6 +68,9 @@ Bienvenue sur **L'explorateur de clients** de Chavost.
 
         st.markdown("**Informations du client**")
         with st.expander("Afficher les informations des clients"):
+            df_info_cli = df_info[
+                [col for col in df_info.columns if not col.startswith("unname")]
+            ]
             st.info(
                 "ici se trouvbera les informations relartives aux clients comme l'adresse , le pays etc, il y aura un menou déroulant des clients et il faudra cliquer pour avoir un certain client"
             )
@@ -79,10 +82,11 @@ Bienvenue sur **L'explorateur de clients** de Chavost.
                 )
             else:
                 client = sel_clients
+                df_info_filtre = df_info_cli[df_info_cli]
 
-            df_info_cli = df_info.loc[:, ~df_info.columns.str.startswith("unname")]
-            df_info_cli = df_info_cli[df_info_cli["nom_client"] == client]
-            st.dataframe(df_info_cli, hide_index=True)
+            # df_info_cli = df_info_cli[df_info_cli["nom_client"] == client]
+            st.write(type(client))
+            st.dataframe(df_info_cli)
 
         # On enregistre les bases de données en sql et on applique le filtre
         df_filtre, df_com_filtre, df_stock_filtred = prepare_client_filters(
