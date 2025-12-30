@@ -8,6 +8,9 @@ import streamlit as st
 from src.utils.main_engineering import check_data
 from src.interface.onglet.home import render_home
 from src.interface.onglet.client import client_tool
+from src.interface.onglet import sales
+
+
 
 # =============================================================================
 # Page metadata / Theme
@@ -225,7 +228,9 @@ def main() -> None:
     elif page == "Outils:client":
         render_onboarding()
         client_tool()
-
+    elif page == "Analyses:sales":
+        sales.render_sales_page()
+    
 
 if __name__ == "__main__":
     main()
