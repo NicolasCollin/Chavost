@@ -30,6 +30,7 @@ from src.interface.onglet.client_page.features.render import (
     render_kpis,
     metric_table_date,
     render_affichage_commande,
+    render_info_client,
 )
 
 
@@ -67,26 +68,12 @@ Bienvenue sur **L'explorateur de clients** de Chavost.
         ##On affixche premièremen les informations importantes
 
         st.markdown("**Informations du client**")
-        with st.expander("Afficher les informations des clients"):
+        with st.expander("Afficher les informations", expanded=False):
             df_info_cli = df_info[
                 [col for col in df_info.columns if not col.startswith("unname")]
             ]
-            st.info(
-                "ici se trouvbera les informations relartives aux clients comme l'adresse , le pays etc, il y aura un menou déroulant des clients et il faudra cliquer pour avoir un certain client"
-            )
             st.markdown("#### Informations personelles clients")
-            # Je mettrai la partie du dessous dans une fonction dans render
-            if len(sel_clients) > 1:
-                client = st.selectbox(
-                    "Sur quel clients vouluez vous des informations", sel_clients
-                )
-            else:
-                client = sel_clients
-                df_info_filtre = df_info_cli[df_info_cli]
-
-            # df_info_cli = df_info_cli[df_info_cli["nom_client"] == client]
-            st.write(type(client))
-            st.dataframe(df_info_cli)
+            render_info_client(df_info_cli, sel_clients)
 
         # On enregistre les bases de données en sql et on applique le filtre
         df_filtre, df_com_filtre, df_stock_filtred = prepare_client_filters(

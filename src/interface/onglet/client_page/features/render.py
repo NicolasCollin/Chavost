@@ -1,4 +1,6 @@
 import streamlit as st
+import pandas as pd
+
 from src.interface.onglet.client_page.features.viz import build_fig_commande
 
 
@@ -120,3 +122,91 @@ def render_affichage_commande(df_order_client_by_dates):
     with q2:
         fig_commande = build_fig_commande(df_use)
         st.plotly_chart(fig_commande, use_container_width=True)
+
+
+def show_metric_if_exists(col, val, name_val):
+    if pd.isna(val):
+        col.metric(name_val, "")
+        col.info("Cette valeur n'est pas connue")
+    else:
+        col.metric(name_val, val)
+
+
+def render_info_client(df_info_cli, sel_clients):
+    if len(sel_clients) > 1:
+        client = st.selectbox(
+            "Sur quel clients voulez vous des informations personelles", sel_clients
+        )
+    else:
+        client = sel_clients[0]
+        # df_info_filtre = df_info_cli[df_info_cli]
+
+    # Dataframe des informations du client
+    df_filtre_client = df_info_cli[df_info_cli["nom_client"] == client]
+    if df_filtre_client.empty:
+        st.warning("⚠️ Ce client n'est pas référencé dans les données clients")
+    else:
+        # ----On écrit alors les informations----
+
+        # Deux premières colonnes
+        i1, i2 = st.columns(2)
+
+        # LE nom
+        nom = df_filtre_client["nom_client"].iloc[0]
+        show_metric_if_exists(i1, nom, "Nom du client")
+
+        # LE type de client
+        type = df_filtre_client["type_client"].iloc[0]
+        show_metric_if_exists(i2, type, "Type du client")
+
+        st.markdown("---")
+        st.markdown("#### Informations Géographique")
+        i_1, i_2, i_3, i_4 = st.columns(4)
+
+        # Pays
+        pays = df_filtre_client["pays"].iloc[0]
+        show_metric_if_exists(i_1, pays, "Pays")
+
+        # VIlle
+        ville = df_filtre_client["ville"].iloc[0]
+        show_metric_if_exists(i_2, ville, "Ville")
+
+        # Departement
+        dep = df_filtre_client["departement"].iloc[0]
+        show_metric_if_exists(i_3, dep, "Département")
+
+        # Code_postal
+        code_post = df_filtre_client["code_postal"].iloc[0]
+        show_metric_if_exists(i_4, code_post, "Code Postal")
+
+        st.markdown("---")
+        st.markdown("#### Contact")
+        con1, con2, con3 = st.columns(3)
+
+        # Code_postal
+        tel = df_filtre_client["portable"].iloc[0]
+        show_metric_if_exists(con1, tel, "Portable")
+
+        # Code_postal
+        fixe = df_filtre_client["fixe"].iloc[0]
+        show_metric_if_exists(con2, fixe, "Fixe")
+
+        # Email
+        mail = df_filtre_client["email"].iloc[0]
+        with con3:
+            if pd.isna(mail):
+                st.metric("e-Mail", "")
+                st.info("Cette valeur n'est pas connue")
+            else:
+                st.metric("e-Mail", "")
+                st.write(mail)
+
+        site = df_filtre_client["siteweb"].iloc[0]
+        if not pd.isna(site):
+            st.markdown("#### Site Professionel")
+            s1 = st.columns(1)
+            show_metric_if_exists(s1, site, "Site web")
+
+        # df_info_cli = df_info_cli[df_info_cli["nom_client"] == client]
+        with st.expander("Afficher le dataframe des informations", expanded=False):
+            st.dataframe(df_info_cli[df_info_cli["nom_client"] == client])
