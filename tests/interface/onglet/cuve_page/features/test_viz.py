@@ -21,7 +21,13 @@ class TestViz(unittest.TestCase):
 
     def test_build_fig_evolution(self) -> None:
         """Les courbes d'évolution doivent renvoyer une figure."""
-        df = pd.DataFrame({"mois": ["2025-01", "2025-02"], "quantite_vendue": [10, 20], "valeur_ventes": [100, 200]})
+        df = pd.DataFrame(
+            {
+                "mois": ["2025-01", "2025-02"],
+                "quantite_vendue": [10, 20],
+                "valeur_ventes": [100, 200],
+            }
+        )
         fig_q = build_fig_evolution_quantite(df)
         fig_v = build_fig_evolution_valeur(df)
         self.assertTrue(hasattr(fig_q, "data"))

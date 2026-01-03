@@ -21,12 +21,14 @@ class TestRender(unittest.TestCase):
     def test_render_kpis_ok(self) -> None:
         """Avec une ligne KPI, la fonction doit appeler metric 4 fois."""
         df = pd.DataFrame(
-            [{
-                "nb_mouvements": 5,
-                "nb_cuvees": 2,
-                "quantite_vendue": 15,
-                "valeur_ventes": 150.0,
-            }]
+            [
+                {
+                    "nb_mouvements": 5,
+                    "nb_cuvees": 2,
+                    "quantite_vendue": 15,
+                    "valeur_ventes": 150.0,
+                }
+            ]
         )
 
         with patch.object(render_module, "st") as st_mock:

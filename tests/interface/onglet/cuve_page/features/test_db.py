@@ -16,7 +16,9 @@ class TestDb(unittest.TestCase):
         """Les tables stock/article/commande doivent être queryables."""
         con = make_con()
 
-        df_stock = pd.DataFrame({"article": ["A"], "quantit_": [-1], "valeur_du_mouvement": [-10.0]})
+        df_stock = pd.DataFrame(
+            {"article": ["A"], "quantit_": [-1], "valeur_du_mouvement": [-10.0]}
+        )
         df_article = pd.DataFrame({"article": ["A"]})
         df_commande = pd.DataFrame({"dummy": [1]})
 
