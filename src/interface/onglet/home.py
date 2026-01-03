@@ -51,7 +51,6 @@ Bienvenue sur le **tableau de bord ventes** de Chavost.
         st.session_state.page = "Analyses:product"
         st.rerun()
 
-
     # Mini trend par mois
     try:
         by_month = df_c.groupby(["mois_annee"], as_index=False)["net_payer"].sum()
