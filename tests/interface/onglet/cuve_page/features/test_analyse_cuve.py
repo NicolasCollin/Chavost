@@ -88,7 +88,12 @@ class TestAnalyseCuve(unittest.TestCase):
         self.assertIsInstance(df, pd.DataFrame)
         self.assertEqual(len(df), 1)
 
-        expected_cols = {"nb_mouvements", "nb_cuvees", "quantite_vendue", "valeur_ventes"}
+        expected_cols = {
+            "nb_mouvements",
+            "nb_cuvees",
+            "quantite_vendue",
+            "valeur_ventes",
+        }
         self.assertTrue(expected_cols.issubset(set(df.columns)))
 
     def test_query_abc_cuvees(self) -> None:

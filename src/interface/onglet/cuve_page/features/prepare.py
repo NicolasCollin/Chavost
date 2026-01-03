@@ -6,6 +6,7 @@ import pandas as pd
 @dataclass(frozen=True)
 class CuveFilters:
     """Filtres appliqués sur la page cuvées."""
+
     sel_cuvees: list[str]
     sel_annees: list[int]
 

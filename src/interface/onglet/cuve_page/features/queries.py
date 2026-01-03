@@ -22,7 +22,9 @@ def query_kpis_produits(con: duckdb.DuckDBPyConnection) -> pd.DataFrame:
     return con.execute(q).df()
 
 
-def query_top_cuvees_quantite(con: duckdb.DuckDBPyConnection, top_n: int = 10) -> pd.DataFrame:
+def query_top_cuvees_quantite(
+    con: duckdb.DuckDBPyConnection, top_n: int = 10
+) -> pd.DataFrame:
     """Top N des cuvées par quantité vendue."""
     q = f"""
     SELECT
@@ -37,7 +39,9 @@ def query_top_cuvees_quantite(con: duckdb.DuckDBPyConnection, top_n: int = 10) -
     return con.execute(q).df()
 
 
-def query_top_cuvees_valeur(con: duckdb.DuckDBPyConnection, top_n: int = 10) -> pd.DataFrame:
+def query_top_cuvees_valeur(
+    con: duckdb.DuckDBPyConnection, top_n: int = 10
+) -> pd.DataFrame:
     """Top N des cuvées par valeur vendue."""
     q = f"""
     SELECT
