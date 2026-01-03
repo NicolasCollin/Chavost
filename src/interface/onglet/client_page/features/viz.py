@@ -47,6 +47,8 @@ def wrap_label(s, width=14):
 def build_fig_commande(df_use):
     ticktext_wrapped = [wrap_label(a, width=14) for a in df_use["article"]]
 
+    df_use = df_use.sort_values(by="prix_unitaire", ascending=False)
+
     fig_commande = go.Figure()
     fig_commande.add_bar(
         x=df_use["article"],
