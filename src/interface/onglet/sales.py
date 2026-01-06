@@ -5,11 +5,6 @@ import plotly.graph_objects as go
 
 def get_data():
    
-    # Ideally, these are loaded in app.py and stored in st.session_state
-    # Example: df_mouv = st.session_state['data']['mouv_stock']
-    
-    # For this script to work, ensure these keys exist in your session_state
-    # or replace with direct loading logic.
     try:
         df_mouv = st.session_state.get('df_mouv_stock')
         df_articles = st.session_state.get('df_article_precis')
@@ -23,15 +18,12 @@ def get_data():
 
 def prepare_analysis_data(df_mouv, df_articles, df_histo, df_clients):
     """
-    Merges the separated Excel files into one Master DataFrame for analysis.
+    Merges the separated Excel files into one DataFrame for analysis.
     """
-    # 1. Filter Movements: We only want Sales (Sorties), not Production (Entrées)
-    # Adjust 'Type de mouvement' value based on your actual data (e.g., 'Facture', 'BL')
-    # Assuming positive quantities or specific types indicate sales:
+    # 1. Filter Movements
     df_sales = df_mouv.copy() 
     
-    # 2. Merge with Articles to get Wine Names (Cuvées)
-    # Key: Code article
+    # 2. Merge with Articles to get Cuvées
     df_master = pd.merge(
         df_sales, 
         df_articles[['Code article', 'Libellé', 'Unité']], 
@@ -40,8 +32,6 @@ def prepare_analysis_data(df_mouv, df_articles, df_histo, df_clients):
     )
     
     # 3. Merge with History to get Client Type and Client Code
-    # Key: N° document
-    # We rename columns in histo to avoid collision if necessary
     histo_subset = df_histo[['N° document', 'Code client', 'Libellé famille', 'Nom du client']].drop_duplicates(subset='N° document')
     
     df_master = pd.merge(
@@ -52,15 +42,13 @@ def prepare_analysis_data(df_mouv, df_articles, df_histo, df_clients):
     )
 
     # 4. Clean Data
-    # Convert dates
     df_master['Date'] = pd.to_datetime(df_master['Date'])
     
-    # Calculate Total Price for the line if not present (Val Mvt)
-    # Using 'Valeur du mouvement' from mouv_stock
+    # Calculate Total Price for the line 
     
     return df_master
 
-# --- MAIN PAGE FUNCTION ---
+# Main page function
 def render_sales_page():
     st.title("🍷 Analyse des Ventes")
     
@@ -78,7 +66,7 @@ def render_sales_page():
     
     df = st.session_state['df_master']
 
-    # --- SIDEBAR FILTERS ---
+    # Adding sidebar filters
     st.sidebar.header("Filtres")
     
     # Date Filter
@@ -96,7 +84,7 @@ def render_sales_page():
     else:
         df_filtered = df
 
-    # --- KPI SECTION ---
+    # KPI section 
     col1, col2, col3 = st.columns(3)
     
     total_revenue = df_filtered['Valeur du mouvement'].sum()
@@ -112,14 +100,13 @@ def render_sales_page():
     # --- TABS FOR ANALYSIS ---
     tab1, tab2, tab3, tab4 = st.tabs(["Types de Clients", "Cuvées & Produits", "Chronologie", "Pays (Export)"])
 
-    # 1. ANALYSE CLIENTS (Pro vs Perso)
+    # 1. Analysis of clients
     with tab1:
         st.subheader("Répartition par Type de Client")
-        # Uses 'Libellé famille' from histo_clients.xls
         
         col_a, col_b = st.columns(2)
         
-        # Pie Chart: Revenue by Client Family
+        # Pie Chart - Revenue by Client Family
         fig_client_type = px.pie(
             df_filtered, 
             values='Valeur du mouvement', 
@@ -139,10 +126,9 @@ def render_sales_page():
         )
         col_b.plotly_chart(fig_top_clients, use_container_width=True)
 
-    # 2. ANALYSE CUVÉES (Products)
+    # 2. Analysis of cuvées
     with tab2:
         st.subheader("Performance par Cuvée")
-        # Uses 'Libellé' from article_precis.xls
         
         # Group by Article Label
         df_prod = df_filtered.groupby('Libellé')[['Quantité', 'Valeur du mouvement']].sum().reset_index()
@@ -158,7 +144,7 @@ def render_sales_page():
         )
         st.plotly_chart(fig_prod, use_container_width=True)
 
-    # 3. CHRONOLOGIE (Time Series)
+    # 3. Time series analysis 
     with tab3:
         st.subheader("Évolution des Ventes")
         
@@ -174,13 +160,9 @@ def render_sales_page():
         )
         st.plotly_chart(fig_time, use_container_width=True)
 
-    # 4. PAYS (Geography)
+    # 4. Geography
     with tab4:
         st.subheader("Répartition Géographique")
-        
-        # CRITICAL CHECK:
-        # Since 'Pays' was not listed in your variables, we try to find it.
-        # If it's missing in Excel, we check if we can infer it or if it is in the CSV.
         
         if 'Pays' in df_clients.columns:
             # If we successfully merged 'Pays' from client_prospect earlier
