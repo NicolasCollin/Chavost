@@ -1,187 +1,152 @@
 import streamlit as st
 import pandas as pd
 import plotly.express as px
-import plotly.graph_objects as go
 
-def get_data():
-   
-    try:
-        df_mouv = st.session_state.get('df_mouv_stock')
-        df_articles = st.session_state.get('df_article_precis')
-        df_histo = st.session_state.get('df_histo_clients')
-        df_clients = st.session_state.get('df_client_prospect')
-    except Exception as e:
-        st.error(f"Erreur de chargement des données: {e}")
-        return None
+try:
+    from src.utils.engineering import df_stock, df_article, df_clients
+except ImportError:
+    from src.utils.main_engineering import df_stock, df_article, df_clients
 
-    return df_mouv, df_articles, df_histo, df_clients
-
-def prepare_analysis_data(df_mouv, df_articles, df_histo, df_clients):
+# Data loading
+def get_and_prepare_data():
     """
-    Merges the separated Excel files into one DataFrame for analysis.
+    Loads data using the existing engineering functions and merges them
+    using the cleaned column names (snake_case).
     """
-    # 1. Filter Movements
-    df_sales = df_mouv.copy() 
-    
-    # 2. Merge with Articles to get Cuvées
-    df_master = pd.merge(
-        df_sales, 
-        df_articles[['Code article', 'Libellé', 'Unité']], 
-        on='Code article', 
-        how='left'
-    )
-    
-    # 3. Merge with History to get Client Type and Client Code
-    histo_subset = df_histo[['N° document', 'Code client', 'Libellé famille', 'Nom du client']].drop_duplicates(subset='N° document')
-    
-    df_master = pd.merge(
-        df_master,
-        histo_subset,
-        on='N° document',
-        how='left'
-    )
 
-    # 4. Clean Data
-    df_master['Date'] = pd.to_datetime(df_master['Date'])
+    df_mouv = df_stock()      
+    df_arts = df_article()    
+    df_histo = df_clients()   
+
+    # Filtering for sales
+    df_master = df_mouv.copy()
+
+    # Merging with articles
+    if 'code_article' in df_master.columns and 'code_article' in df_arts.columns:
+        df_master['code_article'] = df_master['code_article'].astype(str)
+        df_arts['code_article'] = df_arts['code_article'].astype(str)
+
+        df_master = pd.merge(
+            df_master,
+            df_arts[['code_article', 'libell_', 'unit_']], # libell_ comes from "Libellé"
+            on='code_article',
+            how='left'
+        )
     
-    # Calculate Total Price for the line 
-    
+    # Merging with clients
+    if 'n_document' in df_master.columns and 'n_document' in df_histo.columns:
+        client_cols = ['n_document', 'code_client', 'libell_famille', 'nom_du_client']
+        
+        existing_cols = [c for c in client_cols if c in df_histo.columns]
+        histo_subset = df_histo[existing_cols].drop_duplicates(subset='n_document')
+        
+        df_master = pd.merge(
+            df_master,
+            histo_subset,
+            on='n_document',
+            how='left'
+        )
+
+    if 'date' in df_master.columns:
+        df_master['date'] = pd.to_datetime(df_master['date'])
+
     return df_master
 
-# Main page function
+# Main page
 def render_sales_page():
     st.title("🍷 Analyse des Ventes")
-    
-    # 1. Load & Prep
-    data_tuple = get_data()
-    if not data_tuple or any(d is None for d in data_tuple):
-        st.warning("Veuillez charger les fichiers Excel via la page d'accueil ou le login.")
-        return
 
-    df_mouv, df_articles, df_histo, df_clients = data_tuple
-    
-    # Cache the prep step for performance
-    if 'df_master' not in st.session_state:
-        st.session_state['df_master'] = prepare_analysis_data(df_mouv, df_articles, df_histo, df_clients)
-    
-    df = st.session_state['df_master']
+    if 'sales_dashboard_data' not in st.session_state:
+        try:
+            with st.spinner("Chargement et structuration des données..."):
+                st.session_state['sales_dashboard_data'] = get_and_prepare_data()
+        except Exception as e:
+            st.error(f"Erreur lors du chargement via engineering.py : {e}")
+            return
 
-    # Adding sidebar filters
-    st.sidebar.header("Filtres")
-    
-    # Date Filter
-    min_date = df['Date'].min()
-    max_date = df['Date'].max()
-    date_range = st.sidebar.date_input(
-        "Période",
-        value=(min_date, max_date)
-    )
-    
-    # Filter Data based on date
-    if len(date_range) == 2:
-        mask = (df['Date'] >= pd.to_datetime(date_range[0])) & (df['Date'] <= pd.to_datetime(date_range[1]))
-        df_filtered = df.loc[mask]
-    else:
-        df_filtered = df
+    df = st.session_state['sales_dashboard_data']
 
-    # KPI section 
-    col1, col2, col3 = st.columns(3)
+    # sidebar filters
+    with st.sidebar:
+        st.header("Filtres")
+        
+        # Date Filter
+        if 'date' in df.columns:
+            min_d, max_d = df['date'].min(), df['date'].max()
+            rng = st.date_input("Période", value=(min_d, max_d))
+            if isinstance(rng, tuple) and len(rng) == 2:
+                mask = (df['date'] >= pd.to_datetime(rng[0])) & (df['date'] <= pd.to_datetime(rng[1]))
+                df_filtered = df.loc[mask]
+            else:
+                df_filtered = df
+        else:
+            df_filtered = df
+
+    # 3. KPIs
     
-    total_revenue = df_filtered['Valeur du mouvement'].sum()
-    total_bottles = df_filtered['Quantité'].sum() # Assuming 'Quantité' is bottles
-    top_client = df_filtered.groupby('Nom du client')['Valeur du mouvement'].sum().idxmax()
+    col_val = 'valeur_du_mouvement' if 'valeur_du_mouvement' in df_filtered.columns else None
+    col_qty = 'quantite_reel' if 'quantite_reel' in df_filtered.columns else 'quantit_'
+    col_client = 'nom_du_client' if 'nom_du_client' in df_filtered.columns else None
+
+    c1, c2, c3 = st.columns(3)
     
-    col1.metric("Chiffre d'Affaires (Période)", f"{total_revenue:,.0f} €")
-    col2.metric("Bouteilles Vendues", f"{total_bottles:,.0f}")
-    col3.metric("Meilleur Client", top_client)
+    if col_val:
+        turnover = df_filtered[col_val].sum()
+        c1.metric("Chiffre d'Affaires", f"{turnover:,.0f} €")
+    
+    if col_qty and col_qty in df_filtered.columns:
+        volume = df_filtered[col_qty].sum()
+        c2.metric("Volume (Unités)", f"{volume:,.0f}")
+        
+    if col_client and col_val:
+        try:
+            best = df_filtered.groupby(col_client)[col_val].sum().idxmax()
+            c3.metric("Meilleur Client", str(best))
+        except:
+            c3.metric("Meilleur Client", "-")
 
     st.markdown("---")
 
-    # --- TABS FOR ANALYSIS ---
-    tab1, tab2, tab3, tab4 = st.tabs(["Types de Clients", "Cuvées & Produits", "Chronologie", "Pays (Export)"])
+    # Tabs - different types of analyses
+    tab1, tab2, tab3 = st.tabs(["Types de Clients", "Cuvées", "Chronologie"])
 
-    # 1. Analysis of clients
+    # Tab 1: clients
     with tab1:
-        st.subheader("Répartition par Type de Client")
-        
         col_a, col_b = st.columns(2)
+        if 'libell_famille' in df_filtered.columns and col_val:
+            fig_pie = px.pie(df_filtered, values=col_val, names='libell_famille', title="CA par Famille", hole=0.4)
+            col_a.plotly_chart(fig_pie, use_container_width=True)
         
-        # Pie Chart - Revenue by Client Family
-        fig_client_type = px.pie(
-            df_filtered, 
-            values='Valeur du mouvement', 
-            names='Libellé famille',
-            title="CA par Famille de Client",
-            hole=0.4
-        )
-        col_a.plotly_chart(fig_client_type, use_container_width=True)
-        
-        # Bar Chart: Top 10 Clients
-        df_top_clients = df_filtered.groupby('Nom du client')['Valeur du mouvement'].sum().sort_values().tail(10)
-        fig_top_clients = px.bar(
-            df_top_clients, 
-            orientation='h', 
-            title="Top 10 Clients (CA)",
-            labels={'value': 'Chiffre d\'affaires', 'Nom du client': 'Client'}
-        )
-        col_b.plotly_chart(fig_top_clients, use_container_width=True)
+        # Bar Chart: Top Clients
+        if col_client and col_val:
+            top_cli = df_filtered.groupby(col_client)[col_val].sum().nlargest(10).sort_values(ascending=True)
+            fig_bar = px.bar(top_cli, orientation='h', title="Top 10 Clients")
+            col_b.plotly_chart(fig_bar, use_container_width=True)
 
-    # 2. Analysis of cuvées
+    # Tab 2: products
     with tab2:
-        st.subheader("Performance par Cuvée")
-        
-        # Group by Article Label
-        df_prod = df_filtered.groupby('Libellé')[['Quantité', 'Valeur du mouvement']].sum().reset_index()
-        df_prod = df_prod.sort_values(by='Quantité', ascending=False)
-        
-        fig_prod = px.bar(
-            df_prod, 
-            x='Libellé', 
-            y='Quantité', 
-            color='Valeur du mouvement',
-            title="Volume de vente par Cuvée (Couleur = CA)",
-            text_auto=True
-        )
-        st.plotly_chart(fig_prod, use_container_width=True)
-
-    # 3. Time series analysis 
-    with tab3:
-        st.subheader("Évolution des Ventes")
-        
-        # Resample by Month ('M') or Week ('W')
-        df_time = df_filtered.set_index('Date').resample('M')['Valeur du mouvement'].sum().reset_index()
-        
-        fig_time = px.line(
-            df_time, 
-            x='Date', 
-            y='Valeur du mouvement', 
-            markers=True,
-            title="Évolution Mensuelle du CA"
-        )
-        st.plotly_chart(fig_time, use_container_width=True)
-
-    # 4. Geography
-    with tab4:
-        st.subheader("Répartition Géographique")
-        
-        if 'Pays' in df_clients.columns:
-            # If we successfully merged 'Pays' from client_prospect earlier
-            pass 
-        elif 'Pays' in df_filtered.columns:
-             geo_col = 'Pays'
-        else:
-            st.warning("⚠️ La colonne 'Pays' n'a pas été trouvée dans les fichiers Excel listés.")
-            st.info("Affichage des ventes par Client en attendant la configuration géographique.")
-            geo_col = 'Nom du client'
-
-        # Placeholder logic for map/chart
-        if 'Pays' in df_filtered.columns:
-            df_geo = df_filtered.groupby('Pays')['Valeur du mouvement'].sum().reset_index()
-            fig_map = px.choropleth(
-                df_geo,
-                locations="Pays", 
-                locationmode='country names',
-                color="Valeur du mouvement",
-                title="Carte des Ventes"
+        col_prod_name = 'libell_' 
+        if col_prod_name in df_filtered.columns and col_qty and col_val:
+            df_prod = df_filtered.groupby(col_prod_name)[[col_qty, col_val]].sum().reset_index()
+            df_prod = df_prod.sort_values(by=col_qty, ascending=False)
+            
+            fig_prod = px.bar(
+                df_prod, 
+                x=col_prod_name, 
+                y=col_qty, 
+                color=col_val, 
+                title="Ventes par Cuvée (Couleur = CA)",
+                labels={col_prod_name: "Produit", col_qty: "Quantité", col_val: "CA (€)"}
             )
-            st.plotly_chart(fig_map, use_container_width=True)
+            st.plotly_chart(fig_prod, use_container_width=True)
+
+    # Tab 3: chronology
+    with tab3:
+        if 'date' in df_filtered.columns and col_val:
+            try:
+                df_time = df_filtered.set_index('date').resample('ME')[col_val].sum().reset_index()
+            except:
+                df_time = df_filtered.set_index('date').resample('M')[col_val].sum().reset_index()
+                
+            fig_time = px.line(df_time, x='date', y=col_val, markers=True, title="Évolution Temporelle")
+            st.plotly_chart(fig_time, use_container_width=True)
