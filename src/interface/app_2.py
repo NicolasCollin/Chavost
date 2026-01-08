@@ -11,7 +11,6 @@ from src.interface.onglet.client import client_tool
 from src.interface.onglet import sales
 
 
-
 # =============================================================================
 # Page metadata / Theme
 # =============================================================================
@@ -230,7 +229,7 @@ def main() -> None:
         client_tool()
     elif page == "Analyses:sales":
         sales.render_sales_page()
-    
+
 
 if __name__ == "__main__":
     main()
