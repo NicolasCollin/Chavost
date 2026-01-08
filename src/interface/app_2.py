@@ -7,7 +7,7 @@ import streamlit as st
 
 from src.utils.main_engineering import check_data
 from src.interface.onglet.home import render_home
-from src.interface.onglet.client import client_tool
+from src.interface.onglet.client_page.client import client_tool
 from src.interface.onglet import sales
 from src.interface.onglet.cuve_page.cuve import cuve_tool
 
@@ -233,7 +233,6 @@ def main() -> None:
     elif page == "Analyses:product":
         render_onboarding()
         cuve_tool()
-
 
 
 if __name__ == "__main__":

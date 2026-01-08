@@ -159,9 +159,15 @@ def take_all_file():
     dict_data: Dict[str, pd.DataFrame] = {}
     # Charger les fichiers attendus en mémoire et
     for fname in EXPECTED_FILES:
-        fpath = DATA_FOLDER / fname
-        df = load_csv_safely(fpath)
-        dict_data[fname] = df
+        if fname != "histo_clients.xls":
+            fpath = DATA_FOLDER / fname
+            df = load_csv_safely(fpath)
+            dict_data[fname] = df
+        else:
+            fpath = DATA_FOLDER / fname
+            df = pd.read_excel(fpath, sheet_name=None)
+            dict_data[fname] = df["Sheet"]
+            dict_data["info_client"] = df["info"]
 
     return dict_data
 
@@ -191,4 +197,9 @@ def df_clients_file():
 
 def df_stok_file():
     df = take_all_file()["mouv_stock.xls"]
+    return df
+
+
+def df_info_client_file():
+    df = take_all_file()["info_client"]
     return df
