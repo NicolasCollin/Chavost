@@ -37,7 +37,7 @@ Bienvenue sur le **tableau de bord ventes** de Chavost.
 
     # Quick actions
     st.subheader("Raccourcis")
-    q1, q2, q3 = st.columns(3)
+    q1, q2, q3, q4 = st.columns(4)
     if q1.button("📊 Ouvrir — Vue d’ensemble", use_container_width=True):
         st.session_state.page = "Analyses:overview"
         st.rerun()
@@ -46,6 +46,9 @@ Bienvenue sur le **tableau de bord ventes** de Chavost.
         st.rerun()
     if q3.button("🧰 Ouvrir — Gestion base", use_container_width=True):
         st.session_state.page = "Outils:db"
+        st.rerun()
+    if q4.button("🍾 Ouvrir — Analyse des produits", use_container_width=True):
+        st.session_state.page = "Analyses:product"
         st.rerun()
 
     # Mini trend par mois
