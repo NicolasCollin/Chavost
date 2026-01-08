@@ -35,7 +35,9 @@ class TestClientTool:
         info_calls: list[None] = []
 
         monkeypatch.setattr(client_mod, "make_con", lambda: object())
-        monkeypatch.setattr(client_mod, "df_clients", lambda: pd.DataFrame({"nom_du_client": ["A"]}))
+        monkeypatch.setattr(
+            client_mod, "df_clients", lambda: pd.DataFrame({"nom_du_client": ["A"]})
+        )
         monkeypatch.setattr(client_mod, "df_stock", lambda: pd.DataFrame())
         monkeypatch.setattr(client_mod, "df_commande", lambda: pd.DataFrame())
         monkeypatch.setattr(client_mod, "df_article", lambda: pd.DataFrame())
@@ -44,7 +46,9 @@ class TestClientTool:
         monkeypatch.setattr(client_mod.st, "markdown", lambda *_a, **_k: None)
         monkeypatch.setattr(client_mod.st, "title", lambda *_a, **_k: None)
         monkeypatch.setattr(client_mod.st, "multiselect", lambda *_a, **_k: [])
-        monkeypatch.setattr(client_mod.st, "info", lambda *_a, **_k: info_calls.append(None))
+        monkeypatch.setattr(
+            client_mod.st, "info", lambda *_a, **_k: info_calls.append(None)
+        )
 
         client_mod.client_tool()
 
@@ -97,22 +101,50 @@ class TestClientTool:
         monkeypatch.setattr(client_mod.st, "info", lambda *_a, **_k: None)
         monkeypatch.setattr(client_mod.st, "expander", lambda *_a, **_k: _Ctx())
         monkeypatch.setattr(client_mod.st, "container", lambda *_a, **_k: _Ctx())
-        monkeypatch.setattr(client_mod.st, "columns", lambda *_a, **_k: (object(), object(), object(), object()))
-        monkeypatch.setattr(client_mod.st, "plotly_chart", lambda *_a, **_k: plotly_calls.append(None))
-        monkeypatch.setattr(client_mod.st, "dataframe", lambda *_a, **_k: dataframe_calls.append(None))
+        monkeypatch.setattr(
+            client_mod.st,
+            "columns",
+            lambda *_a, **_k: (object(), object(), object(), object()),
+        )
+        monkeypatch.setattr(
+            client_mod.st, "plotly_chart", lambda *_a, **_k: plotly_calls.append(None)
+        )
+        monkeypatch.setattr(
+            client_mod.st, "dataframe", lambda *_a, **_k: dataframe_calls.append(None)
+        )
 
         # Important: éviter le bloc "Reherche des commandes par dates" (qui s'active si len(sel_clients)==1)
         monkeypatch.setattr(client_mod.st, "multiselect", lambda *_a, **_k: ["A", "B"])
 
         # Préparation + DB
-        monkeypatch.setattr(client_mod, "prepare_client_filters", lambda *_a, **_k: (df_clients, df_com, df_sto))
+        monkeypatch.setattr(
+            client_mod,
+            "prepare_client_filters",
+            lambda *_a, **_k: (df_clients, df_com, df_sto),
+        )
         monkeypatch.setattr(client_mod, "register_tables", lambda _con, *_a, **_k: _con)
 
         # Requêtes (retours minimaux)
-        monkeypatch.setattr(client_mod, "query_nb_commande", lambda _con: pd.DataFrame({"nb_comm": [1], "nom": ["A"]}))
-        monkeypatch.setattr(client_mod, "query_tot_paye", lambda _con: pd.DataFrame({"tot_paye": [10.0], "nom": ["A"]}))
-        monkeypatch.setattr(client_mod, "query_produit_distincs", lambda _con: pd.DataFrame({"prod_diff": [1], "nom": ["A"]}))
-        monkeypatch.setattr(client_mod, "query_nb_tot_prod", lambda _con: pd.DataFrame({"nombre_produits": [1], "nom": ["A"]}))
+        monkeypatch.setattr(
+            client_mod,
+            "query_nb_commande",
+            lambda _con: pd.DataFrame({"nb_comm": [1], "nom": ["A"]}),
+        )
+        monkeypatch.setattr(
+            client_mod,
+            "query_tot_paye",
+            lambda _con: pd.DataFrame({"tot_paye": [10.0], "nom": ["A"]}),
+        )
+        monkeypatch.setattr(
+            client_mod,
+            "query_produit_distincs",
+            lambda _con: pd.DataFrame({"prod_diff": [1], "nom": ["A"]}),
+        )
+        monkeypatch.setattr(
+            client_mod,
+            "query_nb_tot_prod",
+            lambda _con: pd.DataFrame({"nombre_produits": [1], "nom": ["A"]}),
+        )
         monkeypatch.setattr(
             client_mod,
             "query_suivi_temp",
@@ -125,8 +157,18 @@ class TestClientTool:
                 }
             ),
         )
-        monkeypatch.setattr(client_mod, "query_suivi_temp_year", lambda _con: pd.DataFrame({"nom": ["A"], "quantite": [1], "annee": [2025]}))
-        monkeypatch.setattr(client_mod, "query_top_achat", lambda _con: pd.DataFrame({"article": ["X"], "quantite_tot": [1], "nom": ["A"]}))
+        monkeypatch.setattr(
+            client_mod,
+            "query_suivi_temp_year",
+            lambda _con: pd.DataFrame({"nom": ["A"], "quantite": [1], "annee": [2025]}),
+        )
+        monkeypatch.setattr(
+            client_mod,
+            "query_top_achat",
+            lambda _con: pd.DataFrame(
+                {"article": ["X"], "quantite_tot": [1], "nom": ["A"]}
+            ),
+        )
 
         # Viz
         monkeypatch.setattr(client_mod, "build_fig_suivi", lambda _df: object())
@@ -134,10 +176,18 @@ class TestClientTool:
         monkeypatch.setattr(client_mod, "build_fig_top_achat", lambda _df: object())
 
         # Render
-        monkeypatch.setattr(client_mod, "render_kpis", lambda *_a, **_k: render_kpis_calls.append(None))
-        monkeypatch.setattr(client_mod, "render_info_client", lambda *_a, **_k: render_info_calls.append(None))
+        monkeypatch.setattr(
+            client_mod, "render_kpis", lambda *_a, **_k: render_kpis_calls.append(None)
+        )
+        monkeypatch.setattr(
+            client_mod,
+            "render_info_client",
+            lambda *_a, **_k: render_info_calls.append(None),
+        )
         monkeypatch.setattr(client_mod, "metric_table_date", lambda *_a, **_k: None)
-        monkeypatch.setattr(client_mod, "render_affichage_commande", lambda *_a, **_k: None)
+        monkeypatch.setattr(
+            client_mod, "render_affichage_commande", lambda *_a, **_k: None
+        )
 
         client_mod.client_tool()
 

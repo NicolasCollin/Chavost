@@ -47,7 +47,9 @@ def prepare_client_filters(
     df_stock_filtred = df_sto.merge(df_com_filtre, on="n_document", how="right")
 
     if "date" in df_com_filtre.columns:
-        df_com_filtre["date"] = pd.to_datetime(df_com_filtre["date"], errors="coerce").dt.date
+        df_com_filtre["date"] = pd.to_datetime(
+            df_com_filtre["date"], errors="coerce"
+        ).dt.date
 
     if "date_y" in df_stock_filtred.columns:
         df_stock_filtred["date_y"] = pd.to_datetime(
@@ -61,7 +63,9 @@ def prepare_client_filters(
 
     if ("code_article" in df_stock_filtred.columns) and ("pv_ht" in df_art.columns):
         prix_ref = df_art.set_index("code_article")["pv_ht"]
-        df_stock_filtred["prix_unitaire"] = df_stock_filtred["code_article"].map(prix_ref)
+        df_stock_filtred["prix_unitaire"] = df_stock_filtred["code_article"].map(
+            prix_ref
+        )
     else:
         df_stock_filtred["prix_unitaire"] = pd.NA
 
