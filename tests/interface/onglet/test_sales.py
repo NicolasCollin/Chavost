@@ -9,7 +9,6 @@ Objectif :
 """
 
 import pandas as pd
-import pytest
 
 import src.interface.onglet.sales as sales
 
@@ -88,7 +87,11 @@ def test_get_and_prepare_data_merges_and_parses_date(monkeypatch):
         }
     )
     df_arts = pd.DataFrame(
-        {"code_article": ["1", "2"], "libell_": ["Cuvee A", "Cuvee B"], "unit_": ["bt", "bt"]}
+        {
+            "code_article": ["1", "2"],
+            "libell_": ["Cuvee A", "Cuvee B"],
+            "unit_": ["bt", "bt"],
+        }
     )
     df_histo = pd.DataFrame(
         {
