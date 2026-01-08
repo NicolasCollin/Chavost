@@ -9,6 +9,7 @@ from src.utils.main_engineering import check_data
 from src.interface.onglet.home import render_home
 from src.interface.onglet.client import client_tool
 from src.interface.onglet import sales
+from src.interface.onglet.cuve_page.cuve import cuve_tool
 
 
 # =============================================================================
@@ -229,6 +230,10 @@ def main() -> None:
         client_tool()
     elif page == "Analyses:sales":
         sales.render_sales_page()
+    elif page == "Analyses:product":
+        render_onboarding()
+        cuve_tool()
+
 
 
 if __name__ == "__main__":
