@@ -73,11 +73,19 @@ def check_data() -> None:
                 if not fpath.exists():
                     missing_files.append(fname)
                     continue
-                try:
-                    df = load_csv_safely(fpath)
-                    raw_dfs[fname] = df
-                except Exception as e:
-                    errors[fname] = e  # exception capturée localement
+                if fname != "histo_clients.xls":
+                    try:
+                        df = load_csv_safely(fpath)
+                        raw_dfs[fname] = df
+                    except Exception as e:
+                        errors[fname] = e
+                else:
+                    try:
+                        df = pd.read_excel(fpath, sheet_name=None)
+                        raw_dfs[fname] = df["Sheet"]
+                        raw_dfs["info_client"] = df["info"]
+                    except Exception as e:
+                        errors[fname] = e
 
             if missing_files:
                 st.warning("Fichiers manquants : " + ", ".join(missing_files))
